@@ -1,6 +1,7 @@
 import type { Block } from "@/lib/blocks";
 import { focalXKey, focalYKey } from "@/lib/blocks";
 import { EditableText } from "@/components/builder/editable-text";
+import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 
 export interface RenderProduct {
   id: string;
@@ -288,6 +289,7 @@ export function BlockRenderer({
                     <p className="mt-1 text-sm text-zinc-600">
                       {formatPrice(product.priceCents)}
                     </p>
+                    <AddToCartButton productId={product.id} />
                   </div>
                 </div>
               ))}

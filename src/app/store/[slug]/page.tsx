@@ -2,13 +2,19 @@ import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BlockRenderer } from "@/components/block-renderer";
 import { defaultLayout, type Block } from "@/lib/blocks";
+import { CartProvider } from "@/components/storefront/cart-context";
+import { CartDrawer } from "@/components/storefront/cart-drawer";
+import { OrderSuccessBanner } from "@/components/storefront/order-success-banner";
 
 export default async function StorefrontPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ order?: string }>;
 }) {
   const { slug } = await params;
+  const { order } = await searchParams;
 
   const shop = await prisma.shop.findUnique({ where: { slug } });
   if (!shop || !shop.published) {
@@ -31,22 +37,24 @@ export default async function StorefrontPage({
     blocks = defaultLayout();
   }
 
+  const renderProducts = products.map((p) => ({
+    id: p.id,
+    title: p.title,
+    priceCents: p.priceCents,
+    imageUrl: p.imageUrl,
+    imageFocalX: p.imageFocalX,
+    imageFocalY: p.imageFocalY,
+  }));
+
   return (
-    <div className="flex-1 bg-white">
-      {blocks.map((block) => (
-        <BlockRenderer
-          key={block.id}
-          block={block}
-          products={products.map((p) => ({
-            id: p.id,
-            title: p.title,
-            priceCents: p.priceCents,
-            imageUrl: p.imageUrl,
-            imageFocalX: p.imageFocalX,
-            imageFocalY: p.imageFocalY,
-          }))}
-        />
-      ))}
-    </div>
+    <CartProvider shopSlug={shop.slug} products={renderProducts}>
+      <div className="flex-1 bg-white">
+        {order === "success" && <OrderSuccessBanner />}
+        {blocks.map((block) => (
+          <BlockRenderer key={block.id} block={block} products={renderProducts} />
+        ))}
+      </div>
+      <CartDrawer shopSlug={shop.slug} />
+    </CartProvider>
   );
 }
