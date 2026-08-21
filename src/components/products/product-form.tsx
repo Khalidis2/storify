@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ImageUploadField } from "@/components/image-upload-field";
 
 export interface ProductInput {
   title: string;
@@ -98,17 +99,7 @@ export function ProductForm({
         </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-zinc-700">
-          Image URL
-        </label>
-        <input
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          placeholder="https://…"
-          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
-        />
-      </div>
+      <ImageUploadField label="Product image" value={imageUrl} onChange={setImageUrl} />
 
       <div className="flex items-center gap-3">
         <button

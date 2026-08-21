@@ -2,6 +2,7 @@
 
 import type { Block } from "@/lib/blocks";
 import { BLOCK_DEFS, INLINE_FIELD_TYPES } from "@/lib/blocks";
+import { ImageUploadField } from "@/components/image-upload-field";
 
 export function SettingsPanel({
   block,
@@ -102,6 +103,17 @@ export function SettingsPanel({
                   />
                 </div>
               </div>
+            );
+          }
+
+          if (field.type === "image") {
+            return (
+              <ImageUploadField
+                key={field.key}
+                label={field.label}
+                value={String(value)}
+                onChange={(url) => onChange({ ...block.props, [field.key]: url })}
+              />
             );
           }
 
