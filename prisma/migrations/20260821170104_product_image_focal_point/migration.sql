@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE "Product" ADD COLUMN     "imageFocalX" INTEGER NOT NULL DEFAULT 50,
+ADD COLUMN     "imageFocalY" INTEGER NOT NULL DEFAULT 50;
+

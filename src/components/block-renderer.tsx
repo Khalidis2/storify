@@ -1,4 +1,5 @@
 import type { Block } from "@/lib/blocks";
+import { focalXKey, focalYKey } from "@/lib/blocks";
 import { EditableText } from "@/components/builder/editable-text";
 
 export interface RenderProduct {
@@ -6,6 +7,8 @@ export interface RenderProduct {
   title: string;
   priceCents: number;
   imageUrl: string | null;
+  imageFocalX?: number;
+  imageFocalY?: number;
 }
 
 function formatPrice(cents: number) {
@@ -64,6 +67,8 @@ export function BlockRenderer({
   const p = block.props;
   const commit = (key: string) => (value: string) => onTextChange?.(key, value);
   const str = (key: string) => String(p[key] ?? "");
+  const focalPosition = (imageFieldKey: string) =>
+    `${Number(p[focalXKey(imageFieldKey)] ?? 50)}% ${Number(p[focalYKey(imageFieldKey)] ?? 50)}%`;
 
   switch (block.type) {
     case "hero":
@@ -77,7 +82,7 @@ export function BlockRenderer({
               ? `linear-gradient(rgba(0,0,0,0.35), rgba(0,0,0,0.35)), url(${p.imageUrl})`
               : undefined,
             backgroundSize: "cover",
-            backgroundPosition: "center",
+            backgroundPosition: focalPosition("imageUrl"),
           }}
         >
           <Text
@@ -195,6 +200,7 @@ export function BlockRenderer({
                   src={String(p.imageUrl)}
                   alt=""
                   className="aspect-square w-full rounded-2xl object-cover"
+                  style={{ objectPosition: focalPosition("imageUrl") }}
                 />
               ) : (
                 <div className="flex aspect-square w-full items-center justify-center rounded-2xl bg-zinc-100 text-sm text-zinc-400">
@@ -269,6 +275,11 @@ export function BlockRenderer({
                         src={product.imageUrl}
                         alt={product.title}
                         className="h-full w-full object-cover"
+                        style={{
+                          objectPosition: `${product.imageFocalX ?? 50}% ${
+                            product.imageFocalY ?? 50
+                          }%`,
+                        }}
                       />
                     ) : null}
                   </div>
@@ -304,6 +315,7 @@ export function BlockRenderer({
                 src={String(p.avatarUrl)}
                 alt=""
                 className="h-10 w-10 rounded-full object-cover"
+                style={{ objectPosition: focalPosition("avatarUrl") }}
               />
             ) : null}
             <div className="text-left">

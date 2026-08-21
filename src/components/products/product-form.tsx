@@ -8,6 +8,8 @@ export interface ProductInput {
   description: string;
   price: string;
   imageUrl: string;
+  imageFocalX: number;
+  imageFocalY: number;
   stock: string;
 }
 
@@ -24,6 +26,8 @@ export function ProductForm({
   const [description, setDescription] = useState(initial?.description ?? "");
   const [price, setPrice] = useState(initial?.price ?? "");
   const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
+  const [imageFocalX, setImageFocalX] = useState(initial?.imageFocalX ?? 50);
+  const [imageFocalY, setImageFocalY] = useState(initial?.imageFocalY ?? 50);
   const [stock, setStock] = useState(initial?.stock ?? "0");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -32,7 +36,15 @@ export function ProductForm({
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const err = await onSubmit({ title, description, price, imageUrl, stock });
+    const err = await onSubmit({
+      title,
+      description,
+      price,
+      imageUrl,
+      imageFocalX,
+      imageFocalY,
+      stock,
+    });
     setLoading(false);
     if (err) setError(err);
   }
@@ -99,7 +111,17 @@ export function ProductForm({
         </div>
       </div>
 
-      <ImageUploadField label="Product image" value={imageUrl} onChange={setImageUrl} />
+      <ImageUploadField
+        label="Product image"
+        value={imageUrl}
+        onChange={setImageUrl}
+        focalX={imageFocalX}
+        focalY={imageFocalY}
+        onFocalChange={(x, y) => {
+          setImageFocalX(x);
+          setImageFocalY(y);
+        }}
+      />
 
       <div className="flex items-center gap-3">
         <button

@@ -37,6 +37,14 @@ export interface FieldDef {
 /** Fields edited inline on the canvas (click the text on the page) rather than in the settings panel. */
 export const INLINE_FIELD_TYPES: FieldType[] = ["text", "textarea"];
 
+/** Prop key names storing an image field's focal point (0-100), derived from the field's own key. */
+export function focalXKey(imageFieldKey: string) {
+  return `${imageFieldKey}FocalX`;
+}
+export function focalYKey(imageFieldKey: string) {
+  return `${imageFieldKey}FocalY`;
+}
+
 export interface BlockDef {
   type: BlockType;
   label: string;

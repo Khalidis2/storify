@@ -66,6 +66,8 @@ model Product {
   description String?
   priceCents  Int
   imageUrl    String?
+  imageFocalX Int      @default(50)
+  imageFocalY Int      @default(50)
   stock       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt

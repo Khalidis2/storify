@@ -1,7 +1,7 @@
 "use client";
 
 import type { Block } from "@/lib/blocks";
-import { BLOCK_DEFS, INLINE_FIELD_TYPES } from "@/lib/blocks";
+import { BLOCK_DEFS, INLINE_FIELD_TYPES, focalXKey, focalYKey } from "@/lib/blocks";
 import { ImageUploadField } from "@/components/image-upload-field";
 
 export function SettingsPanel({
@@ -107,12 +107,19 @@ export function SettingsPanel({
           }
 
           if (field.type === "image") {
+            const fx = focalXKey(field.key);
+            const fy = focalYKey(field.key);
             return (
               <ImageUploadField
                 key={field.key}
                 label={field.label}
                 value={String(value)}
                 onChange={(url) => onChange({ ...block.props, [field.key]: url })}
+                focalX={Number(block.props[fx] ?? 50)}
+                focalY={Number(block.props[fy] ?? 50)}
+                onFocalChange={(x, y) =>
+                  onChange({ ...block.props, [fx]: x, [fy]: y })
+                }
               />
             );
           }

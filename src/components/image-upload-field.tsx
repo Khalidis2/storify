@@ -6,14 +6,22 @@ export function ImageUploadField({
   value,
   onChange,
   label,
+  focalX = 50,
+  focalY = 50,
+  onFocalChange,
 }: {
   value: string;
   onChange: (url: string) => void;
   label?: string;
+  focalX?: number;
+  focalY?: number;
+  onFocalChange?: (x: number, y: number) => void;
 }) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const previewRef = useRef<HTMLDivElement | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
 
   async function handleFileSelected(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -41,6 +49,32 @@ export function ImageUploadField({
     }
   }
 
+  function updateFocalFromEvent(e: { clientX: number; clientY: number }) {
+    const rect = previewRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const x = Math.round(Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)));
+    const y = Math.round(Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)));
+    onFocalChange?.(x, y);
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!onFocalChange) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDragging(true);
+    updateFocalFromEvent(e);
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging) return;
+    updateFocalFromEvent(e);
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    if (!dragging) return;
+    e.currentTarget.releasePointerCapture(e.pointerId);
+    setDragging(false);
+  }
+
   return (
     <div>
       {label && (
@@ -48,17 +82,40 @@ export function ImageUploadField({
       )}
 
       {value ? (
-        <div className="mb-2 flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={value}
-            alt=""
-            className="h-16 w-16 rounded-lg border border-zinc-200 object-cover"
-          />
+        <div className="mb-2">
+          <div
+            ref={previewRef}
+            onPointerDown={handlePointerDown}
+            onPointerMove={handlePointerMove}
+            onPointerUp={handlePointerUp}
+            className={`relative aspect-video w-full overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 ${
+              onFocalChange ? "cursor-crosshair touch-none select-none" : ""
+            }`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={value}
+              alt=""
+              draggable={false}
+              className="pointer-events-none h-full w-full object-cover"
+              style={{ objectPosition: `${focalX}% ${focalY}%` }}
+            />
+            {onFocalChange && (
+              <div
+                className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-indigo-500/80 shadow"
+                style={{ left: `${focalX}%`, top: `${focalY}%` }}
+              />
+            )}
+          </div>
+          {onFocalChange && (
+            <p className="mt-1 text-xs text-zinc-500">
+              Click or drag on the image to choose what stays in view when it&rsquo;s cropped.
+            </p>
+          )}
           <button
             type="button"
             onClick={() => onChange("")}
-            className="text-xs font-medium text-red-600 hover:underline"
+            className="mt-1 text-xs font-medium text-red-600 hover:underline"
           >
             Remove
           </button>

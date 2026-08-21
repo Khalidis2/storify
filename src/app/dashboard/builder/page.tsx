@@ -37,6 +37,8 @@ export default async function BuilderPage() {
         title: p.title,
         priceCents: p.priceCents,
         imageUrl: p.imageUrl,
+        imageFocalX: p.imageFocalX,
+        imageFocalY: p.imageFocalY,
       }))}
       storeUrl={`/store/${shop.slug}`}
     />

@@ -1,16 +1,8 @@
 import { NextResponse } from "next/server";
-import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
-
-const productSchema = z.object({
-  title: z.string().min(1).max(120),
-  description: z.string().max(2000).optional().default(""),
-  priceCents: z.number().int().min(0),
-  imageUrl: z.string().max(2000).optional().default(""),
-  stock: z.number().int().min(0).default(0),
-});
+import { productSchema } from "@/lib/product-schema";
 
 async function assertOwnership(userId: string, productId: string) {
   const shop = await getShopForUser(userId);

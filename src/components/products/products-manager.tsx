@@ -10,6 +10,8 @@ export interface ProductRow {
   description: string | null;
   priceCents: number;
   imageUrl: string | null;
+  imageFocalX: number;
+  imageFocalY: number;
   stock: number;
 }
 
@@ -27,6 +29,8 @@ function toPayload(input: ProductInput) {
     description: input.description,
     priceCents: Number.isFinite(priceFloat) ? Math.round(priceFloat * 100) : 0,
     imageUrl: input.imageUrl,
+    imageFocalX: input.imageFocalX,
+    imageFocalY: input.imageFocalY,
     stock: Number.parseInt(input.stock, 10) || 0,
   };
 }
@@ -94,6 +98,8 @@ export function ProductsManager({ initialProducts }: { initialProducts: ProductR
           description: editing.description ?? "",
           price: (editing.priceCents / 100).toString(),
           imageUrl: editing.imageUrl ?? "",
+          imageFocalX: editing.imageFocalX,
+          imageFocalY: editing.imageFocalY,
           stock: editing.stock.toString(),
         }}
         onCancel={() => setMode("list")}
@@ -133,6 +139,9 @@ export function ProductsManager({ initialProducts }: { initialProducts: ProductR
                     src={product.imageUrl}
                     alt={product.title}
                     className="h-full w-full object-cover"
+                    style={{
+                      objectPosition: `${product.imageFocalX}% ${product.imageFocalY}%`,
+                    }}
                   />
                 ) : null}
               </div>
