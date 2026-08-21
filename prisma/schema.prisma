@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  shops        Shop[]
+}
+
+model Plan {
+  id         String   @id @default(cuid())
+  name       String
+  priceCents Int
+  interval   String   @default("month")
+  features   String
+  sortOrder  Int      @default(0)
+  shops      Shop[]
+}
+
+model Shop {
+  id           String    @id @default(cuid())
+  ownerId      String
+  owner        User      @relation(fields: [ownerId], references: [id])
+  name         String
+  slug         String    @unique
+  tagline      String?
+  logoUrl      String?
+  primaryColor String    @default("#111827")
+  published    Boolean   @default(false)
+  publishedAt  DateTime?
+  planId       String?
+  plan         Plan?     @relation(fields: [planId], references: [id])
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  pages        Page[]
+  products     Product[]
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  shopId    String
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  slug      String   @default("home")
+  title     String   @default("Home")
+  layout    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([shopId, slug])
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  priceCents  Int
+  imageUrl    String?
+  stock       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
