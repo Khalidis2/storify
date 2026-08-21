@@ -1,24 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DndContext,
+  DragOverlay,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
   arrayMove,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { createBlock, type Block, type BlockType } from "@/lib/blocks";
+import { BLOCK_DEFS, createBlock, type Block, type BlockType } from "@/lib/blocks";
 import type { RenderProduct } from "@/components/block-renderer";
 import { SortableBlock } from "@/components/builder/sortable-block";
 import { Palette } from "@/components/builder/palette";
 import { SettingsPanel } from "@/components/builder/settings-panel";
+import { useHistory } from "@/components/builder/use-history";
 
 export function Builder({
   initialBlocks,
@@ -29,10 +32,12 @@ export function Builder({
   products: RenderProduct[];
   storeUrl: string;
 }) {
-  const [blocks, setBlocks] = useState<Block[]>(initialBlocks);
+  const { state: blocks, set: setBlocks, undo, redo, canUndo, canRedo } =
+    useHistory<Block[]>(initialBlocks);
   const [selectedId, setSelectedId] = useState<string | null>(
     initialBlocks[0]?.id ?? null
   );
+  const [activeId, setActiveId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
 
@@ -40,7 +45,26 @@ export function Builder({
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
   );
 
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      const target = e.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.key.toLowerCase() !== "z") return;
+      e.preventDefault();
+      if (e.shiftKey) redo();
+      else undo();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [undo, redo]);
+
+  function handleDragStart(event: DragStartEvent) {
+    setActiveId(String(event.active.id));
+  }
+
   function handleDragEnd(event: DragEndEvent) {
+    setActiveId(null);
     const { active, over } = event;
     if (!over || active.id === over.id) return;
 
@@ -62,9 +86,33 @@ export function Builder({
     setSelectedId((current) => (current === id ? null : current));
   }
 
+  function handleDuplicate(id: string) {
+    setBlocks((current) => {
+      const index = current.findIndex((b) => b.id === id);
+      if (index === -1) return current;
+      const copy: Block = {
+        ...current[index],
+        id: `${current[index].type}-${Math.random().toString(36).slice(2, 10)}`,
+        props: { ...current[index].props },
+      };
+      const next = [...current];
+      next.splice(index + 1, 0, copy);
+      setSelectedId(copy.id);
+      return next;
+    });
+  }
+
   function handlePropsChange(props: Record<string, string | number>) {
     setBlocks((current) =>
       current.map((b) => (b.id === selectedId ? { ...b, props } : b))
+    );
+  }
+
+  function handleTextChange(blockId: string, key: string, value: string) {
+    setBlocks((current) =>
+      current.map((b) =>
+        b.id === blockId ? { ...b, props: { ...b.props, [key]: value } } : b
+      )
     );
   }
 
@@ -80,6 +128,7 @@ export function Builder({
   }
 
   const selectedBlock = blocks.find((b) => b.id === selectedId) ?? null;
+  const activeBlock = blocks.find((b) => b.id === activeId) ?? null;
 
   return (
     <div className="grid grid-cols-1 gap-6 lg:grid-cols-[220px_1fr_300px]">
@@ -88,14 +137,30 @@ export function Builder({
       </div>
 
       <div className="lg:order-2">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex items-center justify-between gap-3">
           <div>
             <h1 className="text-xl font-semibold text-zinc-900">Page builder</h1>
             <p className="text-sm text-zinc-500">
-              Drag sections to reorder, click one to edit it.
+              Drag the grip to reorder, click any text to edit it.
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={undo}
+              disabled={!canUndo}
+              title="Undo (Ctrl+Z)"
+              className="rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-30"
+            >
+              ↺
+            </button>
+            <button
+              onClick={redo}
+              disabled={!canRedo}
+              title="Redo (Ctrl+Shift+Z)"
+              className="rounded-full border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-30"
+            >
+              ↻
+            </button>
             {savedAt && !saving && (
               <span className="text-xs text-green-600">Saved</span>
             )}
@@ -120,7 +185,9 @@ export function Builder({
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
+            onDragCancel={() => setActiveId(null)}
           >
             <SortableContext
               items={blocks.map((b) => b.id)}
@@ -140,10 +207,21 @@ export function Builder({
                     selected={block.id === selectedId}
                     onSelect={() => setSelectedId(block.id)}
                     onRemove={() => handleRemove(block.id)}
+                    onDuplicate={() => handleDuplicate(block.id)}
+                    onTextChange={(key, value) =>
+                      handleTextChange(block.id, key, value)
+                    }
                   />
                 ))
               )}
             </SortableContext>
+            <DragOverlay>
+              {activeBlock ? (
+                <div className="rounded-lg border border-indigo-400 bg-white px-4 py-3 text-sm font-medium text-zinc-700 shadow-lg">
+                  {BLOCK_DEFS[activeBlock.type].label}
+                </div>
+              ) : null}
+            </DragOverlay>
           </DndContext>
         </div>
       </div>

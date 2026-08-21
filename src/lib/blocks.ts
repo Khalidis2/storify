@@ -2,8 +2,13 @@ export type BlockType =
   | "hero"
   | "text"
   | "image"
+  | "imageText"
   | "productGrid"
   | "banner"
+  | "testimonial"
+  | "faq"
+  | "video"
+  | "social"
   | "footer"
   | "spacer";
 
@@ -13,12 +18,24 @@ export interface Block {
   props: Record<string, string | number>;
 }
 
+export type FieldType =
+  | "text"
+  | "textarea"
+  | "color"
+  | "image"
+  | "select"
+  | "number"
+  | "url";
+
 export interface FieldDef {
   key: string;
   label: string;
-  type: "text" | "textarea" | "color" | "image" | "select" | "number";
+  type: FieldType;
   options?: string[];
 }
+
+/** Fields edited inline on the canvas (click the text on the page) rather than in the settings panel. */
+export const INLINE_FIELD_TYPES: FieldType[] = ["text", "textarea"];
 
 export interface BlockDef {
   type: BlockType;
@@ -83,6 +100,30 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
       { key: "caption", label: "Caption", type: "text" },
     ],
   },
+  imageText: {
+    type: "imageText",
+    label: "Image + text",
+    description: "An image alongside a heading and paragraph.",
+    defaultProps: {
+      heading: "Made by hand",
+      body: "Tell the story behind your products — materials, process, or what makes them special.",
+      buttonLabel: "Learn more",
+      imageUrl: "",
+      imagePosition: "left",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "body", label: "Body text", type: "textarea" },
+      { key: "buttonLabel", label: "Button label", type: "text" },
+      { key: "imageUrl", label: "Image URL", type: "image" },
+      {
+        key: "imagePosition",
+        label: "Image position",
+        type: "select",
+        options: ["left", "right"],
+      },
+    ],
+  },
   productGrid: {
     type: "productGrid",
     label: "Product grid",
@@ -116,6 +157,78 @@ export const BLOCK_DEFS: Record<BlockType, BlockDef> = {
       { key: "textColor", label: "Text color", type: "color" },
     ],
   },
+  testimonial: {
+    type: "testimonial",
+    label: "Testimonial",
+    description: "A customer quote with their name.",
+    defaultProps: {
+      quote: "I love this shop! The quality is amazing and shipping was fast.",
+      authorName: "Jamie R.",
+      authorRole: "Verified customer",
+      avatarUrl: "",
+    },
+    fields: [
+      { key: "quote", label: "Quote", type: "textarea" },
+      { key: "authorName", label: "Name", type: "text" },
+      { key: "authorRole", label: "Role / subtitle", type: "text" },
+      { key: "avatarUrl", label: "Avatar image URL", type: "image" },
+    ],
+  },
+  faq: {
+    type: "faq",
+    label: "FAQ",
+    description: "Three frequently asked questions.",
+    defaultProps: {
+      heading: "Frequently asked questions",
+      question1: "How long does shipping take?",
+      answer1: "Most orders arrive within 3-5 business days.",
+      question2: "Do you accept returns?",
+      answer2: "Yes, within 30 days of delivery.",
+      question3: "Where are you located?",
+      answer3: "We're a small shop shipping from the US.",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "question1", label: "Question 1", type: "text" },
+      { key: "answer1", label: "Answer 1", type: "textarea" },
+      { key: "question2", label: "Question 2", type: "text" },
+      { key: "answer2", label: "Answer 2", type: "textarea" },
+      { key: "question3", label: "Question 3", type: "text" },
+      { key: "answer3", label: "Answer 3", type: "textarea" },
+    ],
+  },
+  video: {
+    type: "video",
+    label: "Video",
+    description: "An embedded YouTube/Vimeo video or direct video file.",
+    defaultProps: {
+      heading: "",
+      videoUrl: "",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "videoUrl", label: "Video URL (YouTube, Vimeo, or .mp4)", type: "url" },
+    ],
+  },
+  social: {
+    type: "social",
+    label: "Social links",
+    description: "Links to your shop's social media.",
+    defaultProps: {
+      heading: "Follow us",
+      instagramUrl: "",
+      facebookUrl: "",
+      twitterUrl: "",
+      tiktokUrl: "",
+    },
+    fields: [
+      { key: "heading", label: "Heading", type: "text" },
+      { key: "instagramUrl", label: "Instagram URL", type: "url" },
+      { key: "facebookUrl", label: "Facebook URL", type: "url" },
+      { key: "twitterUrl", label: "Twitter / X URL", type: "url" },
+      { key: "tiktokUrl", label: "TikTok URL", type: "url" },
+    ],
+  },
   footer: {
     type: "footer",
     label: "Footer",
@@ -147,7 +260,12 @@ export const BLOCK_ORDER: BlockType[] = [
   "banner",
   "text",
   "image",
+  "imageText",
   "productGrid",
+  "testimonial",
+  "faq",
+  "video",
+  "social",
   "spacer",
   "footer",
 ];

@@ -1,7 +1,7 @@
 "use client";
 
 import type { Block } from "@/lib/blocks";
-import { BLOCK_DEFS } from "@/lib/blocks";
+import { BLOCK_DEFS, INLINE_FIELD_TYPES } from "@/lib/blocks";
 
 export function SettingsPanel({
   block,
@@ -19,14 +19,21 @@ export function SettingsPanel({
   }
 
   const def = BLOCK_DEFS[block.type];
+  const panelFields = def.fields.filter((f) => !INLINE_FIELD_TYPES.includes(f.type));
+  const hasInlineFields = def.fields.length > panelFields.length;
 
   return (
     <div className="rounded-2xl border border-zinc-200 bg-white p-5">
       <h3 className="font-semibold text-zinc-900">{def.label}</h3>
       <p className="mt-1 text-xs text-zinc-500">{def.description}</p>
+      {hasInlineFields && (
+        <p className="mt-2 rounded-lg bg-indigo-50 px-3 py-2 text-xs text-indigo-700">
+          Tip: click directly on this block&rsquo;s text in the page to edit it.
+        </p>
+      )}
 
       <div className="mt-4 space-y-4">
-        {def.fields.map((field) => {
+        {panelFields.map((field) => {
           const value = block.props[field.key] ?? "";
 
           if (field.type === "textarea") {
