@@ -1,3 +1,4 @@
+import Link from "next/link";
 import type { Block } from "@/lib/blocks";
 import { focalXKey, focalYKey } from "@/lib/blocks";
 import { EditableText } from "@/components/builder/editable-text";
@@ -59,11 +60,13 @@ export function BlockRenderer({
   products,
   editable = false,
   onTextChange,
+  shopSlug,
 }: {
   block: Block;
   products: RenderProduct[];
   editable?: boolean;
   onTextChange?: (key: string, value: string) => void;
+  shopSlug?: string;
 }) {
   const p = block.props;
   const commit = (key: string) => (value: string) => onTextChange?.(key, value);
@@ -264,35 +267,50 @@ export function BlockRenderer({
             </p>
           ) : (
             <div className={`grid grid-cols-1 gap-6 ${colsClass}`}>
-              {products.map((product) => (
-                <div
-                  key={product.id}
-                  className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
-                >
-                  <div className="aspect-square w-full bg-zinc-100">
-                    {product.imageUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={product.imageUrl}
-                        alt={product.title}
-                        className="h-full w-full object-cover"
-                        style={{
-                          objectPosition: `${product.imageFocalX ?? 50}% ${
-                            product.imageFocalY ?? 50
-                          }%`,
-                        }}
-                      />
-                    ) : null}
+              {products.map((product) => {
+                const tileBody = (
+                  <>
+                    <div className="aspect-square w-full bg-zinc-100">
+                      {product.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={product.imageUrl}
+                          alt={product.title}
+                          className="h-full w-full object-cover"
+                          style={{
+                            objectPosition: `${product.imageFocalX ?? 50}% ${
+                              product.imageFocalY ?? 50
+                            }%`,
+                          }}
+                        />
+                      ) : null}
+                    </div>
+                    <div className="p-4 pb-0">
+                      <p className="font-medium text-zinc-900">{product.title}</p>
+                      <p className="mt-1 text-sm text-zinc-600">
+                        {formatPrice(product.priceCents)}
+                      </p>
+                    </div>
+                  </>
+                );
+                return (
+                  <div
+                    key={product.id}
+                    className="overflow-hidden rounded-2xl border border-zinc-200 bg-white"
+                  >
+                    {!editable && shopSlug ? (
+                      <Link href={`/store/${shopSlug}/products/${product.id}`}>
+                        {tileBody}
+                      </Link>
+                    ) : (
+                      tileBody
+                    )}
+                    <div className="p-4">
+                      <AddToCartButton productId={product.id} />
+                    </div>
                   </div>
-                  <div className="p-4">
-                    <p className="font-medium text-zinc-900">{product.title}</p>
-                    <p className="mt-1 text-sm text-zinc-600">
-                      {formatPrice(product.priceCents)}
-                    </p>
-                    <AddToCartButton productId={product.id} />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>

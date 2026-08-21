@@ -51,7 +51,12 @@ export default async function StorefrontPage({
       <div className="flex-1 bg-white">
         {order === "success" && <OrderSuccessBanner />}
         {blocks.map((block) => (
-          <BlockRenderer key={block.id} block={block} products={renderProducts} />
+          <BlockRenderer
+            key={block.id}
+            block={block}
+            products={renderProducts}
+            shopSlug={shop.slug}
+          />
         ))}
       </div>
       <CartDrawer shopSlug={shop.slug} />
