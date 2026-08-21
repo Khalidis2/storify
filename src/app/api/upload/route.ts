@@ -41,7 +41,20 @@ export async function POST(request: Request) {
       addRandomSuffix: false,
     });
     return NextResponse.json({ url: blob.url });
-  } catch {
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Blob upload failed:", message);
+
+    if (!process.env.BLOB_READ_WRITE_TOKEN) {
+      return NextResponse.json(
+        {
+          error:
+            "Image uploads aren't configured yet — no Blob store is connected to this deployment.",
+        },
+        { status: 500 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Upload failed. Please try again." },
       { status: 500 }
