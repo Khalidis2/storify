@@ -6,9 +6,8 @@ build their homepage, list products, and publish a live storefront.
 ## Stack
 
 - **Next.js 16** (App Router, TypeScript, Tailwind CSS)
-- **Prisma 6 + SQLite** — zero-config local database (swap the `DATABASE_URL`
-  for a hosted Postgres URL, e.g. a free [Neon](https://neon.tech) instance,
-  when deploying)
+- **Prisma 6 + Postgres** — works with any hosted Postgres, e.g. a free
+  [Neon](https://neon.tech) instance
 - **NextAuth v5** — email/password login via a Credentials provider
 - **dnd-kit** — the drag-and-drop page builder
 
@@ -16,21 +15,34 @@ build their homepage, list products, and publish a live storefront.
 
 ```bash
 npm install
-npx prisma migrate dev   # creates prisma/dev.db and applies the schema
+npx prisma migrate dev   # applies the schema to your database
 npm run db:seed          # seeds the three pricing plans
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Environment variables live in `.env` (already present for local dev):
+Environment variables live in `.env` (not committed — create your own):
 
 ```
-DATABASE_URL="file:./dev.db"
-AUTH_SECRET="dev-secret-change-me-in-production-please"
+DATABASE_URL="postgresql://user:password@host/dbname?sslmode=require"
+AUTH_SECRET="…"
 ```
 
-Generate a real `AUTH_SECRET` for any non-local deployment: `npx auth secret`.
+Generate a real `AUTH_SECRET`: `npx auth secret`, or `openssl rand -base64 32`.
+
+## Deploying (Vercel)
+
+1. Import the GitHub repo into Vercel (Next.js is auto-detected).
+2. In Project → Settings → Environment Variables, add `DATABASE_URL`
+   (your Postgres connection string) and `AUTH_SECRET` for the Production
+   environment.
+3. Apply migrations once, from your machine, against that same
+   `DATABASE_URL`: `npx prisma migrate deploy`. (The build itself only
+   runs `next build` — it doesn't touch the database, so a missing/rotated
+   `DATABASE_URL` never breaks a deploy.)
+4. Run `npm run db:seed` the same way to seed pricing plans, then redeploy
+   (or just push).
 
 ## How it fits together
 
