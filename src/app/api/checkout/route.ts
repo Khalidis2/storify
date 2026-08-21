@@ -79,23 +79,32 @@ export async function POST(request: Request) {
 
   const origin = new URL(request.url).origin;
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "payment",
-    line_items: lineItems,
-    success_url: `${origin}/store/${shop.slug}?order=success`,
-    cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
-    metadata: { shopId: shop.id },
-  });
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: lineItems,
+      success_url: `${origin}/store/${shop.slug}?order=success`,
+      cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
+      metadata: { shopId: shop.id },
+    });
 
-  await prisma.order.create({
-    data: {
-      shopId: shop.id,
-      stripeSessionId: session.id,
-      status: "pending",
-      totalCents,
-      items: { create: orderItemsData },
-    },
-  });
+    await prisma.order.create({
+      data: {
+        shopId: shop.id,
+        stripeSessionId: session.id,
+        status: "pending",
+        totalCents,
+        items: { create: orderItemsData },
+      },
+    });
 
-  return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: session.url });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("Stripe checkout session creation failed:", message);
+    return NextResponse.json(
+      { error: `Checkout failed: ${message}` },
+      { status: 500 }
+    );
+  }
 }
