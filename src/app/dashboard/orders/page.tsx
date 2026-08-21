@@ -15,6 +15,32 @@ const STATUS_STYLES: Record<string, string> = {
   pending: "bg-amber-50 text-amber-700",
 };
 
+interface ShippingAddress {
+  line1?: string | null;
+  line2?: string | null;
+  city?: string | null;
+  state?: string | null;
+  postal_code?: string | null;
+  country?: string | null;
+}
+
+function formatAddress(raw: string | null): string | null {
+  if (!raw) return null;
+  try {
+    const a: ShippingAddress = JSON.parse(raw);
+    return [
+      a.line1,
+      a.line2,
+      [a.city, a.state, a.postal_code].filter(Boolean).join(", "),
+      a.country,
+    ]
+      .filter(Boolean)
+      .join(", ");
+  } catch {
+    return null;
+  }
+}
+
 export default async function OrdersPage() {
   const session = await auth();
   const shop = await getShopForUser(session!.user.id);
@@ -65,6 +91,16 @@ export default async function OrdersPage() {
 
               {order.customerEmail && (
                 <p className="mt-2 text-sm text-zinc-600">{order.customerEmail}</p>
+              )}
+
+              {(order.shippingName || order.shippingAddress) && (
+                <div className="mt-2 rounded-lg bg-zinc-50 px-3 py-2 text-xs text-zinc-600">
+                  <p className="font-medium text-zinc-700">Ship to</p>
+                  {order.shippingName && <p>{order.shippingName}</p>}
+                  {formatAddress(order.shippingAddress) && (
+                    <p>{formatAddress(order.shippingAddress)}</p>
+                  )}
+                </div>
               )}
 
               <ul className="mt-3 space-y-1 text-sm text-zinc-700">

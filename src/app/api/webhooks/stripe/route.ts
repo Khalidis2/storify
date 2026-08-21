@@ -33,11 +33,15 @@ export async function POST(request: Request) {
     });
 
     if (order && order.status !== "paid") {
+      const shippingDetails = session.collected_information?.shipping_details;
+
       await prisma.order.update({
         where: { id: order.id },
         data: {
           status: "paid",
           customerEmail: session.customer_details?.email ?? null,
+          shippingName: shippingDetails?.name ?? null,
+          shippingAddress: shippingDetails ? JSON.stringify(shippingDetails.address) : null,
         },
       });
 

@@ -80,6 +80,8 @@ model Order {
   shop            Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
   stripeSessionId String      @unique
   customerEmail   String?
+  shippingName    String?
+  shippingAddress String?
   status          String      @default("pending")
   totalCents      Int
   createdAt       DateTime    @default(now())

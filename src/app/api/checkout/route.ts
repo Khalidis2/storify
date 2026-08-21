@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
 
 const checkoutSchema = z.object({
   shopSlug: z.string().min(1),
@@ -84,6 +85,9 @@ export async function POST(request: Request) {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: lineItems,
+      shipping_address_collection: {
+        allowed_countries: [...STRIPE_SHIPPING_COUNTRIES],
+      },
       success_url: `${origin}/store/${shop.slug}?order=success`,
       cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
       metadata: { shopId: shop.id },
