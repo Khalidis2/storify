@@ -1,9 +1,68 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { CartProvider } from "@/components/storefront/cart-context";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { ProductDetail } from "@/components/storefront/product-detail";
+
+const getPublishedShop = cache((slug: string) =>
+  prisma.shop.findFirst({ where: { slug, published: true } })
+);
+const getShopProduct = cache((shopId: string, productId: string) =>
+  prisma.product.findFirst({ where: { id: productId, shopId } })
+);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string; productId: string }>;
+}): Promise<Metadata> {
+  const { slug, productId } = await params;
+  const shop = await getPublishedShop(slug);
+  if (!shop) {
+    return {
+      title: "Product not found",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const product = await getShopProduct(shop.id, productId);
+  if (!product) {
+    return {
+      title: "Product not found",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const description =
+    product.description?.trim().slice(0, 160) ||
+    `Buy ${product.title} from ${shop.name}.`;
+  const canonical = `/store/${shop.slug}/products/${product.id}`;
+  const images = product.imageUrl
+    ? [{ url: product.imageUrl, alt: product.title }]
+    : undefined;
+
+  return {
+    title: `${product.title} — ${shop.name}`,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      type: "website",
+      title: product.title,
+      description,
+      url: canonical,
+      images,
+    },
+    twitter: {
+      card: images ? "summary_large_image" : "summary",
+      title: product.title,
+      description,
+      images: product.imageUrl ? [product.imageUrl] : undefined,
+    },
+  };
+}
 
 export default async function ProductDetailPage({
   params,
@@ -12,13 +71,13 @@ export default async function ProductDetailPage({
 }) {
   const { slug, productId } = await params;
 
-  const shop = await prisma.shop.findUnique({ where: { slug } });
-  if (!shop || !shop.published) {
+  const shop = await getPublishedShop(slug);
+  if (!shop) {
     notFound();
   }
 
-  const product = await prisma.product.findUnique({ where: { id: productId } });
-  if (!product || product.shopId !== shop.id) {
+  const product = await getShopProduct(shop.id, productId);
+  if (!product) {
     notFound();
   }
 
