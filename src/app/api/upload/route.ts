@@ -2,8 +2,15 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
+import {
+  MAX_UPLOAD_REQUEST_BYTES,
+  MAX_UPLOAD_SIZE_BYTES,
+  UPLOAD_BURST_LIMIT,
+  UPLOAD_BURST_WINDOW_MS,
+  UPLOAD_DAILY_LIMIT,
+  UPLOAD_DAILY_WINDOW_MS,
+} from "@/lib/upload-limits";
 
-const MAX_SIZE_BYTES = 4 * 1024 * 1024;
 const EXTENSIONS: Record<string, string> = {
   "image/jpeg": "jpg",
   "image/png": "png",
@@ -34,15 +41,34 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
   }
 
+  const contentLength = Number(request.headers.get("content-length"));
+  if (Number.isFinite(contentLength) && contentLength > MAX_UPLOAD_REQUEST_BYTES) {
+    return NextResponse.json(
+      { error: "Upload request is too large." },
+      { status: 413 }
+    );
+  }
+
   try {
-    const rateLimit = await checkRateLimit(request, {
-      namespace: "upload",
-      identifier: session.user.id,
-      limit: 30,
-      windowMs: 10 * 60 * 1000,
-    });
-    if (!rateLimit.allowed) {
-      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    const [burstLimit, dailyLimit] = await Promise.all([
+      checkRateLimit(request, {
+        namespace: "upload-burst",
+        identifier: session.user.id,
+        limit: UPLOAD_BURST_LIMIT,
+        windowMs: UPLOAD_BURST_WINDOW_MS,
+      }),
+      checkRateLimit(request, {
+        namespace: "upload-daily",
+        identifier: session.user.id,
+        limit: UPLOAD_DAILY_LIMIT,
+        windowMs: UPLOAD_DAILY_WINDOW_MS,
+      }),
+    ]);
+    const blocked = [burstLimit, dailyLimit].filter((limit) => !limit.allowed);
+    if (blocked.length > 0) {
+      return rateLimitResponse(
+        Math.max(...blocked.map((limit) => limit.retryAfterSeconds))
+      );
     }
   } catch (error) {
     console.error("Upload rate limit check failed", error);
@@ -65,7 +91,7 @@ export async function POST(request: Request) {
       { status: 400 }
     );
   }
-  if (file.size === 0 || file.size > MAX_SIZE_BYTES) {
+  if (file.size === 0 || file.size > MAX_UPLOAD_SIZE_BYTES) {
     return NextResponse.json(
       { error: "Image must be between 1 byte and 4MB." },
       { status: 400 }
