@@ -3,13 +3,7 @@
 import { useContext, useState } from "react";
 import { CartContext } from "@/components/storefront/cart-context";
 
-function formatPrice(cents: number) {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "AED",
-  });
-}
-
+import { formatPrice } from "@/lib/currency";
 export function ProductDetail({
   product,
 }: {

@@ -4,6 +4,7 @@ import { focalXKey, focalYKey } from "@/lib/blocks";
 import { EditableText } from "@/components/builder/editable-text";
 import { AddToCartButton } from "@/components/storefront/add-to-cart-button";
 
+import { formatPrice } from "@/lib/currency";
 export interface RenderProduct {
   id: string;
   title: string;
@@ -11,13 +12,6 @@ export interface RenderProduct {
   imageUrl: string | null;
   imageFocalX?: number;
   imageFocalY?: number;
-}
-
-function formatPrice(cents: number) {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "AED",
-  });
 }
 
 function videoEmbedUrl(url: string): { kind: "iframe" | "video"; src: string } | null {

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { ProductForm, type ProductInput } from "@/components/products/product-form";
 
+import { formatPrice } from "@/lib/currency";
 export interface ProductRow {
   id: string;
   title: string;
@@ -13,13 +14,6 @@ export interface ProductRow {
   imageFocalX: number;
   imageFocalY: number;
   stock: number;
-}
-
-function formatPrice(cents: number) {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "AED",
-  });
 }
 
 function toPayload(input: ProductInput) {
