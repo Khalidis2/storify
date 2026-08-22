@@ -91,6 +91,8 @@ model Order {
   currency        String      @default("AED")
   fulfillmentMode String      @default("DELIVERY")
   shippingFeeCents Int         @default(0)
+  fulfillmentStatus String     @default("UNFULFILLED")
+  fulfilledAt      DateTime?
   totalCents      Int
   reservedAt      DateTime?
   expiresAt       DateTime?
