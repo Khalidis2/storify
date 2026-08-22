@@ -20,6 +20,7 @@ export default async function SettingsPage() {
           tagline: shop.tagline ?? "",
           primaryColor: shop.primaryColor,
           logoUrl: shop.logoUrl ?? "",
+          currency: shop.currency,
         }}
       />
     </div>

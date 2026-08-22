@@ -35,6 +35,7 @@ model Shop {
   tagline      String?
   logoUrl      String?
   primaryColor String    @default("#111827")
+  currency     String    @default("AED")
   published    Boolean   @default(false)
   publishedAt  DateTime?
   planId       String?
@@ -83,6 +84,7 @@ model Order {
   shippingName    String?
   shippingAddress String?
   status          String      @default("pending")
+  currency        String      @default("AED")
   totalCents      Int
   reservedAt      DateTime?
   expiresAt       DateTime?

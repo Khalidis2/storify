@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
 import { slugify } from "@/lib/slug";
 import { defaultLayout } from "@/lib/blocks";
+import { SUPPORTED_SHOP_CURRENCIES } from "@/lib/currency";
 
 const createShopSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -87,6 +88,7 @@ const updateShopSchema = z.object({
   name: z.string().trim().min(1).max(80),
   tagline: z.string().trim().max(200).optional().default(""),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  currency: z.enum(SUPPORTED_SHOP_CURRENCIES),
   logoUrl: z
     .string()
     .trim()
