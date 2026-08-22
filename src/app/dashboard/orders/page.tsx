@@ -3,6 +3,7 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
 import { formatPrice } from "@/lib/currency";
+import { OrderFulfillmentControl } from "@/components/orders/order-fulfillment-control";
 
 const STATUS_STYLES: Record<string, string> = {
   paid: "bg-green-50 text-green-700",
@@ -93,6 +94,15 @@ export default async function OrdersPage() {
                   {formatPrice(order.totalCents, order.currency)}
                 </span>
               </div>
+
+              {order.status === "paid" && (
+                <div className="mt-3">
+                  <OrderFulfillmentControl
+                    orderId={order.id}
+                    initialStatus={order.fulfillmentStatus}
+                  />
+                </div>
+              )}
 
               <div className="mt-2 text-sm text-zinc-600">
                 <p>{order.fulfillmentMode === "PICKUP" ? "Pickup" : "Delivery"}</p>
