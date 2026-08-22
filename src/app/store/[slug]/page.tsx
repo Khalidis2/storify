@@ -94,7 +94,7 @@ export default async function StorefrontPage({
   }));
 
   return (
-    <CartProvider shopSlug={shop.slug} products={renderProducts}>
+    <CartProvider shopSlug={shop.slug} products={renderProducts} currency={shop.currency}>
       <div className="flex-1 bg-white">
         {order === "success" && <OrderSuccessBanner />}
         {blocks.map((block) => (
@@ -103,6 +103,7 @@ export default async function StorefrontPage({
             block={block}
             products={renderProducts}
             shopSlug={shop.slug}
+            currency={shop.currency}
           />
         ))}
       </div>

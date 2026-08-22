@@ -90,7 +90,7 @@ export default async function OrdersPage() {
                   </span>
                 </div>
                 <span className="font-semibold text-zinc-900">
-                  {formatPrice(order.totalCents)}
+                  {formatPrice(order.totalCents, order.currency)}
                 </span>
               </div>
 
@@ -114,7 +114,7 @@ export default async function OrdersPage() {
                     <span>
                       {item.quantity}× {item.title}
                     </span>
-                    <span>{formatPrice(item.priceCents * item.quantity)}</span>
+                    <span>{formatPrice(item.priceCents * item.quantity, order.currency)}</span>
                   </li>
                 ))}
               </ul>

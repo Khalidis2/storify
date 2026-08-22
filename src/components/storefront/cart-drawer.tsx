@@ -5,7 +5,7 @@ import { useCart } from "@/components/storefront/cart-context";
 
 import { formatPrice } from "@/lib/currency";
 export function CartDrawer({ shopSlug }: { shopSlug: string }) {
-  const { products, items, totalCount, totalCents, setQuantity, removeItem } = useCart();
+  const { products, items, totalCount, totalCents, currency, setQuantity, removeItem } = useCart();
   const [open, setOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export function CartDrawer({ shopSlug }: { shopSlug: string }) {
                       </div>
                       <div className="flex-1">
                         <p className="text-sm font-medium text-zinc-900">{product.title}</p>
-                        <p className="text-xs text-zinc-500">{formatPrice(product.priceCents)}</p>
+                        <p className="text-xs text-zinc-500">{formatPrice(product.priceCents, currency)}</p>
                         <div className="mt-1 flex items-center gap-2">
                           <button
                             onClick={() => setQuantity(product.id, quantity - 1)}
@@ -138,7 +138,7 @@ export function CartDrawer({ shopSlug }: { shopSlug: string }) {
                 )}
                 <div className="mb-3 flex items-center justify-between text-sm font-medium text-zinc-900">
                   <span>Subtotal</span>
-                  <span>{formatPrice(totalCents)}</span>
+                  <span>{formatPrice(totalCents, currency)}</span>
                 </div>
                 <button
                   onClick={handleCheckout}

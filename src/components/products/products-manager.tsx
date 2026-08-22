@@ -29,7 +29,13 @@ function toPayload(input: ProductInput) {
   };
 }
 
-export function ProductsManager({ initialProducts }: { initialProducts: ProductRow[] }) {
+export function ProductsManager({
+  initialProducts,
+  currency,
+}: {
+  initialProducts: ProductRow[];
+  currency: string;
+}) {
   const router = useRouter();
   const [products, setProducts] = useState(initialProducts);
   const [mode, setMode] = useState<"list" | "new" | string>("list");
@@ -79,7 +85,11 @@ export function ProductsManager({ initialProducts }: { initialProducts: ProductR
 
   if (mode === "new") {
     return (
-      <ProductForm onCancel={() => setMode("list")} onSubmit={handleCreate} />
+      <ProductForm
+        currency={currency}
+        onCancel={() => setMode("list")}
+        onSubmit={handleCreate}
+      />
     );
   }
 
@@ -87,6 +97,7 @@ export function ProductsManager({ initialProducts }: { initialProducts: ProductR
   if (editing) {
     return (
       <ProductForm
+        currency={currency}
         initial={{
           title: editing.title,
           description: editing.description ?? "",
@@ -142,7 +153,7 @@ export function ProductsManager({ initialProducts }: { initialProducts: ProductR
               <div className="p-4">
                 <p className="font-medium text-zinc-900">{product.title}</p>
                 <p className="mt-1 text-sm text-zinc-600">
-                  {formatPrice(product.priceCents)} · {product.stock} in stock
+                  {formatPrice(product.priceCents, currency)} · {product.stock} in stock
                 </p>
                 <div className="mt-3 flex items-center gap-3">
                   <button

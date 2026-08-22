@@ -89,6 +89,12 @@ export async function POST(request: Request) {
       }
 
       if (session.payment_status !== "paid" || order.status === "paid") return;
+      if (
+        session.currency?.toUpperCase() !== order.currency ||
+        session.amount_total !== order.totalCents
+      ) {
+        throw new Error(`Stripe payment amount mismatch for order ${order.id}`);
+      }
 
       if (order.status !== "reserved") {
         for (const item of order.items) {

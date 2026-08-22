@@ -27,10 +27,12 @@ export function Builder({
   initialBlocks,
   products,
   storeUrl,
+  currency,
 }: {
   initialBlocks: Block[];
   products: RenderProduct[];
   storeUrl: string;
+  currency: string;
 }) {
   const { state: blocks, set: setBlocks, undo, redo, canUndo, canRedo } =
     useHistory<Block[]>(initialBlocks);
@@ -204,6 +206,7 @@ export function Builder({
                     key={block.id}
                     block={block}
                     products={products}
+                    currency={currency}
                     selected={block.id === selectedId}
                     onSelect={() => setSelectedId(block.id)}
                     onRemove={() => handleRemove(block.id)}

@@ -6,7 +6,9 @@ import { CartContext } from "@/components/storefront/cart-context";
 import { formatPrice } from "@/lib/currency";
 export function ProductDetail({
   product,
+  currency,
 }: {
+  currency: string;
   product: {
     id: string;
     title: string;
@@ -49,7 +51,7 @@ export function ProductDetail({
 
       <div>
         <h1 className="text-3xl font-bold text-zinc-900">{product.title}</h1>
-        <p className="mt-2 text-xl text-zinc-700">{formatPrice(product.priceCents)}</p>
+        <p className="mt-2 text-xl text-zinc-700">{formatPrice(product.priceCents, currency)}</p>
 
         {product.description && (
           <p className="mt-6 whitespace-pre-line text-zinc-600">{product.description}</p>

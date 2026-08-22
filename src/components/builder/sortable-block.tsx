@@ -9,6 +9,7 @@ import { BlockRenderer, type RenderProduct } from "@/components/block-renderer";
 export function SortableBlock({
   block,
   products,
+  currency,
   selected,
   onSelect,
   onRemove,
@@ -17,6 +18,7 @@ export function SortableBlock({
 }: {
   block: Block;
   products: RenderProduct[];
+  currency: string;
   selected: boolean;
   onSelect: () => void;
   onRemove: () => void;
@@ -55,6 +57,7 @@ export function SortableBlock({
       <BlockRenderer
         block={block}
         products={products}
+        currency={currency}
         editable
         onTextChange={onTextChange}
       />

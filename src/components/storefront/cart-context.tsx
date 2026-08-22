@@ -10,6 +10,7 @@ interface CartContextValue {
   items: CartItems;
   totalCount: number;
   totalCents: number;
+  currency: string;
   addItem: (productId: string, quantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
@@ -25,10 +26,12 @@ function storageKey(shopSlug: string) {
 export function CartProvider({
   shopSlug,
   products,
+  currency,
   children,
 }: {
   shopSlug: string;
   products: RenderProduct[];
+  currency: string;
   children: React.ReactNode;
 }) {
   const [items, setItems] = useState<CartItems>({});
@@ -99,7 +102,7 @@ export function CartProvider({
 
   return (
     <CartContext.Provider
-      value={{ products, items, totalCount, totalCents, addItem, setQuantity, removeItem, clear }}
+      value={{ products, items, totalCount, totalCents, currency, addItem, setQuantity, removeItem, clear }}
     >
       {children}
     </CartContext.Provider>
