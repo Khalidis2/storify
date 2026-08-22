@@ -4,6 +4,15 @@ import {
   MIN_STRIPE_AMOUNT_CENTS,
 } from "@/lib/payment-limits";
 
+function isHttpsUrl(value: string) {
+  if (!value) return true;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 export const productSchema = z.object({
   title: z.string().trim().min(1).max(120),
   description: z.string().trim().max(2000).optional().default(""),
@@ -12,7 +21,13 @@ export const productSchema = z.object({
     .int()
     .min(MIN_STRIPE_AMOUNT_CENTS)
     .max(MAX_STRIPE_AMOUNT_CENTS),
-  imageUrl: z.string().trim().max(2000).optional().default(""),
+  imageUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(isHttpsUrl, "Image URL must use HTTPS.")
+    .optional()
+    .default(""),
   imageFocalX: z.number().int().min(0).max(100).default(50),
   imageFocalY: z.number().int().min(0).max(100).default(50),
   stock: z.number().int().min(0).max(1_000_000).default(0),

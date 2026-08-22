@@ -19,6 +19,26 @@ const blockTypes = [
   "spacer",
 ] as const;
 
+const urlKeys = new Set([
+  "imageUrl",
+  "avatarUrl",
+  "videoUrl",
+  "instagramUrl",
+  "facebookUrl",
+  "twitterUrl",
+  "tiktokUrl",
+]);
+const colorKeys = new Set(["backgroundColor", "textColor"]);
+
+function isHttpsUrl(value: string) {
+  if (!value) return true;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const blockSchema = z.object({
   id: z.string().min(1).max(100),
   type: z.enum(blockTypes),
@@ -39,6 +59,56 @@ const saveSchema = z
     if (new Set(ids).size !== ids.length) {
       ctx.addIssue({ code: "custom", message: "Block IDs must be unique." });
     }
+
+    value.blocks.forEach((block, blockIndex) => {
+      Object.entries(block.props).forEach(([key, prop]) => {
+        if (
+          urlKeys.has(key) &&
+          (typeof prop !== "string" || !isHttpsUrl(prop.trim()))
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["blocks", blockIndex, "props", key],
+            message: "Storefront URLs must use HTTPS.",
+          });
+        }
+        if (
+          colorKeys.has(key) &&
+          (typeof prop !== "string" || !/^#[0-9a-fA-F]{6}$/.test(prop))
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["blocks", blockIndex, "props", key],
+            message: "Colors must use six-digit hex format.",
+          });
+        }
+        if (
+          (key.endsWith("FocalX") || key.endsWith("FocalY")) &&
+          (typeof prop !== "number" || !Number.isInteger(prop) || prop < 0 || prop > 100)
+        ) {
+          ctx.addIssue({
+            code: "custom",
+            path: ["blocks", blockIndex, "props", key],
+            message: "Image focal points must be whole numbers from 0 to 100.",
+          });
+        }
+      });
+
+      if (
+        block.type === "spacer" &&
+        (typeof block.props.height !== "number" ||
+          !Number.isInteger(block.props.height) ||
+          block.props.height < 0 ||
+          block.props.height > 500)
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["blocks", blockIndex, "props", "height"],
+          message: "Spacer height must be a whole number from 0 to 500.",
+        });
+      }
+    });
+
     if (JSON.stringify(value).length > 262_144) {
       ctx.addIssue({ code: "custom", message: "Page layout is too large." });
     }
