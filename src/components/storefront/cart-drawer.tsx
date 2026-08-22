@@ -4,7 +4,15 @@ import { useState } from "react";
 import { useCart } from "@/components/storefront/cart-context";
 
 import { formatPrice } from "@/lib/currency";
-export function CartDrawer({ shopSlug }: { shopSlug: string }) {
+export function CartDrawer({
+  shopSlug,
+  fulfillmentMode,
+  shippingFeeCents,
+}: {
+  shopSlug: string;
+  fulfillmentMode: string;
+  shippingFeeCents: number;
+}) {
   const { products, items, totalCount, totalCents, currency, setQuantity, removeItem } = useCart();
   const [open, setOpen] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
@@ -136,14 +144,35 @@ export function CartDrawer({ shopSlug }: { shopSlug: string }) {
                     {error}
                   </p>
                 )}
-                <div className="mb-3 flex items-center justify-between text-sm font-medium text-zinc-900">
-                  <span>Subtotal</span>
-                  <span>{formatPrice(totalCents, currency)}</span>
+                <div className="space-y-1 text-sm text-zinc-700">
+                  <div className="flex items-center justify-between">
+                    <span>Subtotal</span>
+                    <span>{formatPrice(totalCents, currency)}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span>{fulfillmentMode === "PICKUP" ? "Pickup" : "Delivery"}</span>
+                    <span>
+                      {fulfillmentMode === "PICKUP"
+                        ? "Free"
+                        : shippingFeeCents === 0
+                          ? "Free"
+                          : formatPrice(shippingFeeCents, currency)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-zinc-200 pt-2 font-medium text-zinc-900">
+                    <span>Total</span>
+                    <span>
+                      {formatPrice(
+                        totalCents + (fulfillmentMode === "DELIVERY" ? shippingFeeCents : 0),
+                        currency
+                      )}
+                    </span>
+                  </div>
                 </div>
                 <button
                   onClick={handleCheckout}
                   disabled={checkingOut}
-                  className="w-full rounded-full bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50"
+                  className="mt-3 w-full rounded-full bg-zinc-900 py-3 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50"
                 >
                   {checkingOut ? "Redirecting…" : "Checkout"}
                 </button>

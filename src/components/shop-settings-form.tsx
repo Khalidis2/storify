@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { SUPPORTED_SHOP_CURRENCIES } from "@/lib/currency";
+import { FULFILLMENT_MODES } from "@/lib/fulfillment";
 
 export function ShopSettingsForm({
   initial,
@@ -13,6 +14,10 @@ export function ShopSettingsForm({
     primaryColor: string;
     logoUrl: string;
     currency: string;
+    fulfillmentMode: string;
+    shippingFeeCents: number;
+    shippingPolicy: string;
+    returnPolicy: string;
   };
 }) {
   const router = useRouter();
@@ -21,6 +26,12 @@ export function ShopSettingsForm({
   const [primaryColor, setPrimaryColor] = useState(initial.primaryColor);
   const [logoUrl, setLogoUrl] = useState(initial.logoUrl);
   const [currency, setCurrency] = useState(initial.currency);
+  const [fulfillmentMode, setFulfillmentMode] = useState(initial.fulfillmentMode);
+  const [shippingFee, setShippingFee] = useState(
+    (initial.shippingFeeCents / 100).toString()
+  );
+  const [shippingPolicy, setShippingPolicy] = useState(initial.shippingPolicy);
+  const [returnPolicy, setReturnPolicy] = useState(initial.returnPolicy);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -34,7 +45,17 @@ export function ShopSettingsForm({
     const res = await fetch("/api/shop", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, tagline, primaryColor, logoUrl, currency }),
+      body: JSON.stringify({
+        name,
+        tagline,
+        primaryColor,
+        logoUrl,
+        currency,
+        fulfillmentMode,
+        shippingFeeCents: Math.round((Number.parseFloat(shippingFee) || 0) * 100),
+        shippingPolicy,
+        returnPolicy,
+      }),
     });
 
     setLoading(false);
@@ -136,6 +157,64 @@ export function ShopSettingsForm({
         <p className="mt-1 text-xs text-zinc-500">
           Changing currency does not convert existing product prices.
         </p>
+      </div>
+
+      <div className="border-t border-zinc-200 pt-4">
+        <h2 className="font-medium text-zinc-900">Fulfilment</h2>
+        <label className="mt-3 block text-sm font-medium text-zinc-700">
+          Method
+        </label>
+        <select
+          value={fulfillmentMode}
+          onChange={(e) => setFulfillmentMode(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+        >
+          {FULFILLMENT_MODES.map((mode) => (
+            <option key={mode} value={mode}>
+              {mode === "PICKUP" ? "Pickup only" : "Delivery"}
+            </option>
+          ))}
+        </select>
+
+        {fulfillmentMode === "DELIVERY" && (
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-zinc-700">
+              Flat delivery fee ({currency})
+            </label>
+            <input
+              required
+              type="number"
+              min="0"
+              step="0.01"
+              value={shippingFee}
+              onChange={(e) => setShippingFee(e.target.value)}
+              className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+            />
+            <p className="mt-1 text-xs text-zinc-500">Enter 0 for free delivery.</p>
+          </div>
+        )}
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-zinc-700">Shipping policy</label>
+        <textarea
+          value={shippingPolicy}
+          onChange={(e) => setShippingPolicy(e.target.value)}
+          rows={4}
+          maxLength={5000}
+          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+        />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-zinc-700">Return policy</label>
+        <textarea
+          value={returnPolicy}
+          onChange={(e) => setReturnPolicy(e.target.value)}
+          rows={4}
+          maxLength={5000}
+          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm"
+        />
       </div>
 
       <button

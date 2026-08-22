@@ -7,6 +7,7 @@ import { getShopForUser } from "@/lib/shop";
 import { slugify } from "@/lib/slug";
 import { defaultLayout } from "@/lib/blocks";
 import { SUPPORTED_SHOP_CURRENCIES } from "@/lib/currency";
+import { FULFILLMENT_MODES } from "@/lib/fulfillment";
 
 const createShopSchema = z.object({
   name: z.string().trim().min(1).max(80),
@@ -89,6 +90,10 @@ const updateShopSchema = z.object({
   tagline: z.string().trim().max(200).optional().default(""),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
   currency: z.enum(SUPPORTED_SHOP_CURRENCIES),
+  fulfillmentMode: z.enum(FULFILLMENT_MODES),
+  shippingFeeCents: z.number().int().min(0).max(99_999_999),
+  shippingPolicy: z.string().trim().max(5000).optional().default(""),
+  returnPolicy: z.string().trim().max(5000).optional().default(""),
   logoUrl: z
     .string()
     .trim()

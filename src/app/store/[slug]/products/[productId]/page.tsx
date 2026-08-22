@@ -108,7 +108,11 @@ export default async function ProductDetailPage({
         </div>
         <ProductDetail product={product} currency={shop.currency} />
       </div>
-      <CartDrawer shopSlug={shop.slug} />
+      <CartDrawer
+        shopSlug={shop.slug}
+        fulfillmentMode={shop.fulfillmentMode}
+        shippingFeeCents={shop.shippingFeeCents}
+      />
     </CartProvider>
   );
 }

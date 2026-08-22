@@ -106,8 +106,34 @@ export default async function StorefrontPage({
             currency={shop.currency}
           />
         ))}
+        {(shop.shippingPolicy || shop.returnPolicy) && (
+          <footer className="border-t border-zinc-200 px-6 py-10">
+            <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-2">
+              {shop.shippingPolicy && (
+                <section>
+                  <h2 className="font-semibold text-zinc-900">Shipping policy</h2>
+                  <p className="mt-2 whitespace-pre-line text-sm text-zinc-600">
+                    {shop.shippingPolicy}
+                  </p>
+                </section>
+              )}
+              {shop.returnPolicy && (
+                <section>
+                  <h2 className="font-semibold text-zinc-900">Return policy</h2>
+                  <p className="mt-2 whitespace-pre-line text-sm text-zinc-600">
+                    {shop.returnPolicy}
+                  </p>
+                </section>
+              )}
+            </div>
+          </footer>
+        )}
       </div>
-      <CartDrawer shopSlug={shop.slug} />
+      <CartDrawer
+        shopSlug={shop.slug}
+        fulfillmentMode={shop.fulfillmentMode}
+        shippingFeeCents={shop.shippingFeeCents}
+      />
     </CartProvider>
   );
 }

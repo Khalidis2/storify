@@ -4,6 +4,7 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { isShopCurrency, stripeCurrency } from "@/lib/currency";
+import { effectiveShippingFee, isFulfillmentMode } from "@/lib/fulfillment";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
 import {
   getMinimumStripeAmount,
@@ -107,6 +108,17 @@ export async function POST(request: Request) {
     );
   }
   const shopCurrency = shop.currency;
+  if (!isFulfillmentMode(shop.fulfillmentMode)) {
+    return NextResponse.json(
+      { error: "This shop has unsupported fulfilment settings." },
+      { status: 503 }
+    );
+  }
+  const fulfillmentMode = shop.fulfillmentMode;
+  const shippingFeeCents = effectiveShippingFee(
+    fulfillmentMode,
+    shop.shippingFeeCents
+  );
 
   const products = await prisma.product.findMany({
     where: { id: { in: [...quantities.keys()] }, shopId: shop.id },
@@ -132,10 +144,11 @@ export async function POST(request: Request) {
     priceCents: product.priceCents,
     quantity: quantities.get(product.id)!,
   }));
-  const totalCents = orderItemsData.reduce(
+  const subtotalCents = orderItemsData.reduce(
     (total, item) => total + item.priceCents * item.quantity,
     0
   );
+  const totalCents = subtotalCents + shippingFeeCents;
   if (
     totalCents < getMinimumStripeAmount(shopCurrency) ||
     totalCents > MAX_STRIPE_AMOUNT_CENTS
@@ -170,6 +183,8 @@ export async function POST(request: Request) {
           shopId: shop.id,
           status: "reserved",
           currency: shopCurrency,
+          fulfillmentMode,
+          shippingFeeCents,
           totalCents,
           reservedAt: new Date(),
           expiresAt,
@@ -202,9 +217,25 @@ export async function POST(request: Request) {
       mode: "payment",
       payment_method_types: ["card"],
       line_items: lineItems,
-      shipping_address_collection: {
-        allowed_countries: [...STRIPE_SHIPPING_COUNTRIES],
-      },
+      shipping_address_collection:
+        fulfillmentMode === "DELIVERY"
+          ? { allowed_countries: [...STRIPE_SHIPPING_COUNTRIES] }
+          : undefined,
+      shipping_options:
+        fulfillmentMode === "DELIVERY" && shippingFeeCents > 0
+          ? [
+              {
+                shipping_rate_data: {
+                  type: "fixed_amount",
+                  fixed_amount: {
+                    amount: shippingFeeCents,
+                    currency: stripeCurrency(shopCurrency),
+                  },
+                  display_name: "Delivery",
+                },
+              },
+            ]
+          : undefined,
       expires_at: Math.floor(expiresAt.getTime() / 1000),
       client_reference_id: order.id,
       success_url: `${origin}/store/${shop.slug}?order=success&session_id={CHECKOUT_SESSION_ID}`,

@@ -21,6 +21,10 @@ export default async function SettingsPage() {
           primaryColor: shop.primaryColor,
           logoUrl: shop.logoUrl ?? "",
           currency: shop.currency,
+          fulfillmentMode: shop.fulfillmentMode,
+          shippingFeeCents: shop.shippingFeeCents,
+          shippingPolicy: shop.shippingPolicy ?? "",
+          returnPolicy: shop.returnPolicy ?? "",
         }}
       />
     </div>
