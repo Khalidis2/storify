@@ -26,12 +26,18 @@ export async function checkRateLimit(
 ) {
   const now = new Date();
   const resetBefore = new Date(now.getTime() - windowMs);
+  const retentionBefore = new Date(now.getTime() - 24 * 60 * 60 * 1000);
   const fingerprint = createHash("sha256")
     .update(identifier ?? getClientIdentifier(request))
     .digest("hex");
   const key = `${namespace}:${fingerprint}`;
 
   const rows = await prisma.$queryRaw<RateLimitRow[]>`
+    WITH cleanup AS (
+      DELETE FROM "RateLimitBucket"
+      WHERE "updatedAt" < ${retentionBefore}
+      RETURNING "key"
+    )
     INSERT INTO "RateLimitBucket" ("key", "count", "windowStart", "updatedAt")
     VALUES (${key}, 1, ${now}, ${now})
     ON CONFLICT ("key") DO UPDATE SET
