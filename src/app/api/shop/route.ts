@@ -74,11 +74,26 @@ export async function POST(request: Request) {
   );
 }
 
+function isHttpsUrl(value: string) {
+  if (!value) return true;
+  try {
+    return new URL(value).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
 const updateShopSchema = z.object({
   name: z.string().trim().min(1).max(80),
   tagline: z.string().trim().max(200).optional().default(""),
   primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
-  logoUrl: z.string().trim().max(2000).optional().default(""),
+  logoUrl: z
+    .string()
+    .trim()
+    .max(2000)
+    .refine(isHttpsUrl, "Logo URL must use HTTPS.")
+    .optional()
+    .default(""),
 });
 
 export async function PUT(request: Request) {
