@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 
 const signupSchema = z.object({
-  name: z.string().min(1).max(100),
-  email: z.string().email(),
+  name: z.string().trim().min(1).max(100),
+  email: z.string().trim().toLowerCase().email().max(254),
   password: z.string().min(8).max(200),
 });
 
@@ -21,19 +22,27 @@ export async function POST(request: Request) {
   }
 
   const { name, email, password } = parsed.data;
+  const passwordHash = await bcrypt.hash(password, 12);
 
-  const existing = await prisma.user.findUnique({ where: { email } });
-  if (existing) {
+  try {
+    const user = await prisma.user.create({
+      data: { name, email, passwordHash },
+    });
+    return NextResponse.json({ id: user.id, email: user.email }, { status: 201 });
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === "P2002"
+    ) {
+      return NextResponse.json(
+        { error: "An account with that email already exists." },
+        { status: 409 }
+      );
+    }
+    console.error("Signup failed", error);
     return NextResponse.json(
-      { error: "An account with that email already exists." },
-      { status: 409 }
+      { error: "Could not create your account. Please try again." },
+      { status: 500 }
     );
   }
-
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await prisma.user.create({
-    data: { name, email, passwordHash },
-  });
-
-  return NextResponse.json({ id: user.id, email: user.email });
 }

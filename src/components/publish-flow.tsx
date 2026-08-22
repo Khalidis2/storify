@@ -32,8 +32,11 @@ export function PublishFlow({
   currentPlanId: string | null;
 }) {
   const router = useRouter();
+  const freePlan = plans.find((plan) => plan.priceCents === 0);
   const [selectedPlan, setSelectedPlan] = useState<string | null>(
-    currentPlanId ?? plans[1]?.id ?? plans[0]?.id ?? null
+    currentPlanId && plans.find((plan) => plan.id === currentPlanId)?.priceCents === 0
+      ? currentPlanId
+      : freePlan?.id ?? null
   );
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -61,8 +64,12 @@ export function PublishFlow({
 
   async function handleUnpublish() {
     setLoading(true);
-    await fetch("/api/publish", { method: "DELETE" });
+    const res = await fetch("/api/publish", { method: "DELETE" });
     setLoading(false);
+    if (!res.ok) {
+      setError("Could not unpublish your shop.");
+      return;
+    }
     router.refresh();
   }
 
@@ -72,16 +79,16 @@ export function PublishFlow({
         <p className="inline-flex items-center gap-2 rounded-full bg-green-50 px-3 py-1 text-sm font-medium text-green-700">
           ● Live
         </p>
-        <p className="mt-4 text-sm text-zinc-600">
-          Your storefront is published at:
-        </p>
+        <p className="mt-4 text-sm text-zinc-600">Your storefront is published at:</p>
         <a
           href={`/store/${shopSlug}`}
           target="_blank"
+          rel="noopener noreferrer"
           className="mt-1 block font-medium text-zinc-900 underline"
         >
           /store/{shopSlug}
         </a>
+        {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
         <button
           onClick={handleUnpublish}
           disabled={loading}
@@ -95,12 +102,9 @@ export function PublishFlow({
 
   return (
     <div>
-      <h1 className="text-2xl font-semibold text-zinc-900">
-        Choose a plan to publish
-      </h1>
+      <h1 className="text-2xl font-semibold text-zinc-900">Choose a plan to publish</h1>
       <p className="mt-1 max-w-md text-sm text-zinc-600">
-        You&rsquo;re logged in, so you&rsquo;re all set on that front — pick a
-        plan below and your storefront goes live instantly.
+        Publish free now. Paid plans will become available when subscription billing launches.
       </p>
 
       {error && (
@@ -110,32 +114,41 @@ export function PublishFlow({
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        {plans.map((plan) => (
-          <button
-            key={plan.id}
-            onClick={() => setSelectedPlan(plan.id)}
-            className={`rounded-2xl border-2 bg-white p-5 text-left transition ${
-              selectedPlan === plan.id
-                ? "border-zinc-900"
-                : "border-zinc-200 hover:border-zinc-400"
-            }`}
-          >
-            <p className="font-semibold text-zinc-900">{plan.name}</p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900">
-              {formatPrice(plan.priceCents)}
-              {plan.priceCents > 0 && (
-                <span className="text-sm font-normal text-zinc-500">
-                  /{plan.interval}
-                </span>
-              )}
-            </p>
-            <ul className="mt-4 space-y-1.5 text-sm text-zinc-600">
-              {plan.features.map((f) => (
-                <li key={f}>• {f}</li>
-              ))}
-            </ul>
-          </button>
-        ))}
+        {plans.map((plan) => {
+          const available = plan.priceCents === 0;
+          return (
+            <button
+              key={plan.id}
+              onClick={() => available && setSelectedPlan(plan.id)}
+              disabled={!available}
+              className={`rounded-2xl border-2 bg-white p-5 text-left transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                selectedPlan === plan.id
+                  ? "border-zinc-900"
+                  : "border-zinc-200 hover:border-zinc-400"
+              }`}
+            >
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-semibold text-zinc-900">{plan.name}</p>
+                {!available && (
+                  <span className="rounded-full bg-zinc-100 px-2 py-1 text-xs text-zinc-600">
+                    Coming soon
+                  </span>
+                )}
+              </div>
+              <p className="mt-1 text-2xl font-bold text-zinc-900">
+                {formatPrice(plan.priceCents)}
+                {plan.priceCents > 0 && (
+                  <span className="text-sm font-normal text-zinc-500">/{plan.interval}</span>
+                )}
+              </p>
+              <ul className="mt-4 space-y-1.5 text-sm text-zinc-600">
+                {plan.features.map((feature) => (
+                  <li key={feature}>• {feature}</li>
+                ))}
+              </ul>
+            </button>
+          );
+        })}
       </div>
 
       <button

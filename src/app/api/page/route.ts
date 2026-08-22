@@ -4,15 +4,45 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
 
+const blockTypes = [
+  "hero",
+  "text",
+  "image",
+  "imageText",
+  "productGrid",
+  "banner",
+  "testimonial",
+  "faq",
+  "video",
+  "social",
+  "footer",
+  "spacer",
+] as const;
+
 const blockSchema = z.object({
-  id: z.string(),
-  type: z.string(),
-  props: z.record(z.string(), z.union([z.string(), z.number()])),
+  id: z.string().min(1).max(100),
+  type: z.enum(blockTypes),
+  props: z
+    .record(
+      z.string().min(1).max(100),
+      z.union([z.string().max(5000), z.number().finite()])
+    )
+    .refine((props) => Object.keys(props).length <= 50),
 });
 
-const saveSchema = z.object({
-  blocks: z.array(blockSchema),
-});
+const saveSchema = z
+  .object({
+    blocks: z.array(blockSchema).max(100),
+  })
+  .superRefine((value, ctx) => {
+    const ids = value.blocks.map((block) => block.id);
+    if (new Set(ids).size !== ids.length) {
+      ctx.addIssue({ code: "custom", message: "Block IDs must be unique." });
+    }
+    if (JSON.stringify(value).length > 262_144) {
+      ctx.addIssue({ code: "custom", message: "Page layout is too large." });
+    }
+  });
 
 export async function PUT(request: Request) {
   const session = await auth();
