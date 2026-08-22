@@ -3,6 +3,9 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
 import { productSchema } from "@/lib/product-schema";
+import { STARTER_PRODUCT_LIMIT } from "@/lib/plan-limits";
+
+class ProductLimitError extends Error {}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -21,9 +24,37 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Please check the product details." }, { status: 400 });
   }
 
-  const product = await prisma.product.create({
-    data: { ...parsed.data, shopId: shop.id },
-  });
+  try {
+    const product = await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`
+        SELECT pg_advisory_xact_lock(hashtext(${`shop-products:${shop.id}`}))
+      `;
 
-  return NextResponse.json(product);
+      const productCount = await tx.product.count({
+        where: { shopId: shop.id },
+      });
+      if (productCount >= STARTER_PRODUCT_LIMIT) {
+        throw new ProductLimitError();
+      }
+
+      return tx.product.create({
+        data: { ...parsed.data, shopId: shop.id },
+      });
+    });
+
+    return NextResponse.json(product);
+  } catch (error) {
+    if (error instanceof ProductLimitError) {
+      return NextResponse.json(
+        { error: `The Starter plan supports up to ${STARTER_PRODUCT_LIMIT} products.` },
+        { status: 409 }
+      );
+    }
+
+    console.error("Product creation failed", error);
+    return NextResponse.json(
+      { error: "Could not create the product. Please try again." },
+      { status: 500 }
+    );
+  }
 }
