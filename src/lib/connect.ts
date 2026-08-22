@@ -6,8 +6,11 @@ export async function syncConnectedAccount(
   shopId: string,
   accountId: string
 ) {
-  const account = await stripe.accounts.retrieve(accountId);
-  if (account.deleted) {
+  const account = await stripe.v2.core.accounts.retrieve(accountId, {
+    include: ["configuration.recipient"],
+  });
+
+  if (account.closed) {
     await prisma.shop.update({
       where: { id: shopId },
       data: {
@@ -19,10 +22,12 @@ export async function syncConnectedAccount(
     return { connected: false, chargesEnabled: false, payoutsEnabled: false };
   }
 
+  const stripeBalance =
+    account.configuration?.recipient?.capabilities?.stripe_balance;
   const status = {
     connected: true,
-    chargesEnabled: account.charges_enabled,
-    payoutsEnabled: account.payouts_enabled,
+    chargesEnabled: stripeBalance?.stripe_transfers?.status === "active",
+    payoutsEnabled: stripeBalance?.payouts?.status === "active",
   };
 
   await prisma.shop.update({
