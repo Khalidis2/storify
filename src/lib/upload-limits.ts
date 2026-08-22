@@ -1,0 +1,6 @@
+export const MAX_UPLOAD_SIZE_BYTES = 4 * 1024 * 1024;
+export const MAX_UPLOAD_REQUEST_BYTES = MAX_UPLOAD_SIZE_BYTES + 512 * 1024;
+export const UPLOAD_BURST_LIMIT = 20;
+export const UPLOAD_BURST_WINDOW_MS = 10 * 60 * 1000;
+export const UPLOAD_DAILY_LIMIT = 100;
+export const UPLOAD_DAILY_WINDOW_MS = 24 * 60 * 60 * 1000;
