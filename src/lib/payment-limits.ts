@@ -1,2 +1,2 @@
-export const MIN_STRIPE_AMOUNT_CENTS = 50;
+export const MIN_STRIPE_AMOUNT_CENTS = 200;
 export const MAX_STRIPE_AMOUNT_CENTS = 99_999_999;

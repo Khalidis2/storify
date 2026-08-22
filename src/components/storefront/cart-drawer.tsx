@@ -6,7 +6,7 @@ import { useCart } from "@/components/storefront/cart-context";
 function formatPrice(cents: number) {
   return (cents / 100).toLocaleString(undefined, {
     style: "currency",
-    currency: "USD",
+    currency: "AED",
   });
 }
 

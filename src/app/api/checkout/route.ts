@@ -112,7 +112,7 @@ export async function POST(request: Request) {
   const lineItems = products.map((product) => ({
     quantity: quantities.get(product.id)!,
     price_data: {
-      currency: "usd",
+      currency: "aed",
       unit_amount: product.priceCents,
       product_data: { name: product.title },
     },
