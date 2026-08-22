@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
+import { getSiteUrl } from "@/lib/site-url";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -14,11 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.APP_URL ??
-      process.env.AUTH_URL ??
-      "https://storify-six.vercel.app"
-  ),
+  metadataBase: new URL(getSiteUrl()),
   title: {
     default: "Storify — Build your shop's website in minutes",
     template: "%s | Storify",
