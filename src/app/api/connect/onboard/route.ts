@@ -34,18 +34,33 @@ export async function POST() {
 
     let accountId = shop.stripeAccountId;
     if (!accountId) {
-      const account = await stripe.accounts.create({
-        country: "AE",
-        email: session.user.email,
-        business_profile: {
-          name: shop.name,
-          url: `${getSiteUrl()}/store/${shop.slug}`,
+      const account = await stripe.v2.core.accounts.create({
+        contact_email: session.user.email,
+        display_name: shop.name,
+        dashboard: "express",
+        identity: {
+          country: "ae",
         },
-        controller: {
-          fees: { payer: "application" },
-          losses: { payments: "application" },
-          stripe_dashboard: { type: "express" },
+        configuration: {
+          recipient: {
+            capabilities: {
+              stripe_balance: {
+                stripe_transfers: { requested: true },
+              },
+            },
+          },
         },
+        defaults: {
+          currency: "aed",
+          profile: {
+            business_url: `${getSiteUrl()}/store/${shop.slug}`,
+          },
+          responsibilities: {
+            fees_collector: "application",
+            losses_collector: "application",
+          },
+        },
+        include: ["configuration.recipient"],
         metadata: { shopId: shop.id },
       });
       accountId = account.id;
@@ -54,18 +69,27 @@ export async function POST() {
         where: { id: shop.id },
         data: {
           stripeAccountId: accountId,
-          stripeChargesEnabled: account.charges_enabled,
-          stripePayoutsEnabled: account.payouts_enabled,
+          stripeChargesEnabled: false,
+          stripePayoutsEnabled: false,
         },
       });
     }
 
     const origin = getSiteUrl();
-    const link = await stripe.accountLinks.create({
+    const link = await stripe.v2.core.accountLinks.create({
       account: accountId,
-      refresh_url: `${origin}/dashboard/settings?connect=refresh`,
-      return_url: `${origin}/dashboard/settings?connect=complete`,
-      type: "account_onboarding",
+      use_case: {
+        type: "account_onboarding",
+        account_onboarding: {
+          configurations: ["recipient"],
+          collection_options: {
+            fields: "eventually_due",
+            future_requirements: "include",
+          },
+          refresh_url: `${origin}/dashboard/settings?connect=refresh`,
+          return_url: `${origin}/dashboard/settings?connect=complete`,
+        },
+      },
     });
 
     return NextResponse.json({ url: link.url });
