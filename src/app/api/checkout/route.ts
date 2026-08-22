@@ -22,7 +22,7 @@ export async function POST(request: Request) {
   if (!stripe) {
     return NextResponse.json(
       { error: "This shop can't take payments yet — checkout isn't configured." },
-      { status: 500 }
+      { status: 503 }
     );
   }
 
@@ -32,32 +32,42 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Your cart looks invalid." }, { status: 400 });
   }
 
+  const quantities = new Map<string, number>();
+  for (const item of parsed.data.items) {
+    quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
+  }
+
+  if ([...quantities.values()].some((quantity) => quantity > 99)) {
+    return NextResponse.json({ error: "Your cart looks invalid." }, { status: 400 });
+  }
+
   const shop = await prisma.shop.findUnique({ where: { slug: parsed.data.shopSlug } });
   if (!shop || !shop.published) {
     return NextResponse.json({ error: "This shop isn't available." }, { status: 404 });
   }
 
-  const productIds = parsed.data.items.map((i) => i.productId);
+  const productIds = [...quantities.keys()];
   const products = await prisma.product.findMany({
     where: { id: { in: productIds }, shopId: shop.id },
   });
+
+  if (products.length !== productIds.length) {
+    return NextResponse.json(
+      { error: "One of the items in your cart is no longer available." },
+      { status: 400 }
+    );
+  }
 
   const lineItems = [];
   const orderItemsData = [];
   let totalCents = 0;
 
-  for (const { productId, quantity } of parsed.data.items) {
-    const product = products.find((p) => p.id === productId);
-    if (!product) {
-      return NextResponse.json(
-        { error: "One of the items in your cart is no longer available." },
-        { status: 400 }
-      );
-    }
+  for (const product of products) {
+    const quantity = quantities.get(product.id)!;
     if (quantity > product.stock) {
       return NextResponse.json(
         { error: `Only ${product.stock} of "${product.title}" left in stock.` },
-        { status: 400 }
+        { status: 409 }
       );
     }
 
@@ -78,7 +88,10 @@ export async function POST(request: Request) {
     });
   }
 
-  const origin = new URL(request.url).origin;
+  const configuredOrigin = process.env.APP_URL ?? process.env.AUTH_URL;
+  const origin = configuredOrigin
+    ? new URL(configuredOrigin).origin
+    : new URL(request.url).origin;
 
   try {
     const session = await stripe.checkout.sessions.create({
@@ -88,7 +101,7 @@ export async function POST(request: Request) {
       shipping_address_collection: {
         allowed_countries: [...STRIPE_SHIPPING_COUNTRIES],
       },
-      success_url: `${origin}/store/${shop.slug}?order=success`,
+      success_url: `${origin}/store/${shop.slug}?order=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
       metadata: { shopId: shop.id },
     });
@@ -104,12 +117,11 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("Stripe checkout session creation failed:", message);
+  } catch (error) {
+    console.error("Checkout creation failed", error);
     return NextResponse.json(
-      { error: `Checkout failed: ${message}` },
-      { status: 500 }
+      { error: "Checkout is temporarily unavailable. Please try again." },
+      { status: 502 }
     );
   }
 }
