@@ -3,6 +3,7 @@ import bcrypt from "bcryptjs";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const signupSchema = z.object({
   name: z.string().trim().min(1).max(100),
@@ -11,6 +12,23 @@ const signupSchema = z.object({
 });
 
 export async function POST(request: Request) {
+  try {
+    const rateLimit = await checkRateLimit(request, {
+      namespace: "signup",
+      limit: 5,
+      windowMs: 15 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+  } catch (error) {
+    console.error("Signup rate limit check failed", error);
+    return NextResponse.json(
+      { error: "Account creation is temporarily unavailable. Please try again." },
+      { status: 503 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = signupSchema.safeParse(body);
 

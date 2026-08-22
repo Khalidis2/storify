@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { auth } from "@/auth";
+import { checkRateLimit, rateLimitResponse } from "@/lib/rate-limit";
 
 const MAX_SIZE_BYTES = 4 * 1024 * 1024;
 const EXTENSIONS: Record<string, string> = {
@@ -31,6 +32,24 @@ export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
+  }
+
+  try {
+    const rateLimit = await checkRateLimit(request, {
+      namespace: "upload",
+      identifier: session.user.id,
+      limit: 30,
+      windowMs: 10 * 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+  } catch (error) {
+    console.error("Upload rate limit check failed", error);
+    return NextResponse.json(
+      { error: "Uploads are temporarily unavailable. Please try again." },
+      { status: 503 }
+    );
   }
 
   const form = await request.formData().catch(() => null);

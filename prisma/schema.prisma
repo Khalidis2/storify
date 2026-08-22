@@ -108,3 +108,12 @@ model StripeEvent {
   type      String
   createdAt DateTime @default(now())
 }
+
+model RateLimitBucket {
+  key         String   @id
+  count       Int
+  windowStart DateTime
+  updatedAt   DateTime @updatedAt
+
+  @@index([updatedAt])
+}
