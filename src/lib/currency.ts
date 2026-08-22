@@ -8,8 +8,8 @@ export function isShopCurrency(value: string): value is ShopCurrency {
   return SUPPORTED_SHOP_CURRENCIES.includes(value as ShopCurrency);
 }
 
-export function stripeCurrency(currency: ShopCurrency) {
-  return currency.toLowerCase() as Lowercase<ShopCurrency>;
+export function stripeCurrency(currency: ShopCurrency): string {
+  return currency.toLowerCase();
 }
 
 export function formatPrice(
