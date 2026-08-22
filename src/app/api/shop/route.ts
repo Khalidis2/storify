@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,18 +8,13 @@ import { slugify } from "@/lib/slug";
 import { defaultLayout } from "@/lib/blocks";
 
 const createShopSchema = z.object({
-  name: z.string().min(1).max(80),
+  name: z.string().trim().min(1).max(80),
 });
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Not authenticated." }, { status: 401 });
-  }
-
-  const existing = await getShopForUser(session.user.id);
-  if (existing) {
-    return NextResponse.json({ error: "You already have a shop." }, { status: 409 });
   }
 
   const body = await request.json().catch(() => null);
@@ -28,36 +24,61 @@ export async function POST(request: Request) {
   }
 
   const baseSlug = slugify(parsed.data.name);
-  let slug = baseSlug;
-  let suffix = 1;
-  while (await prisma.shop.findUnique({ where: { slug } })) {
-    suffix += 1;
-    slug = `${baseSlug}-${suffix}`;
+
+  for (let suffix = 1; suffix <= 25; suffix += 1) {
+    const slug = suffix === 1 ? baseSlug : `${baseSlug}-${suffix}`;
+
+    try {
+      const shop = await prisma.shop.create({
+        data: {
+          ownerId: session.user.id,
+          name: parsed.data.name,
+          slug,
+          pages: {
+            create: {
+              slug: "home",
+              title: "Home",
+              layout: JSON.stringify(defaultLayout()),
+            },
+          },
+        },
+      });
+
+      return NextResponse.json({ id: shop.id, slug: shop.slug });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2002"
+      ) {
+        const existing = await getShopForUser(session.user.id);
+        if (existing) {
+          return NextResponse.json(
+            { error: "You already have a shop." },
+            { status: 409 }
+          );
+        }
+        continue;
+      }
+
+      console.error("Shop creation failed", error);
+      return NextResponse.json(
+        { error: "Could not create your shop. Please try again." },
+        { status: 500 }
+      );
+    }
   }
 
-  const shop = await prisma.shop.create({
-    data: {
-      ownerId: session.user.id,
-      name: parsed.data.name,
-      slug,
-      pages: {
-        create: {
-          slug: "home",
-          title: "Home",
-          layout: JSON.stringify(defaultLayout()),
-        },
-      },
-    },
-  });
-
-  return NextResponse.json({ id: shop.id, slug: shop.slug });
+  return NextResponse.json(
+    { error: "Could not reserve a shop address. Please choose another name." },
+    { status: 409 }
+  );
 }
 
 const updateShopSchema = z.object({
-  name: z.string().min(1).max(80),
-  tagline: z.string().max(200).optional().default(""),
-  primaryColor: z.string().min(1).max(20),
-  logoUrl: z.string().max(2000).optional().default(""),
+  name: z.string().trim().min(1).max(80),
+  tagline: z.string().trim().max(200).optional().default(""),
+  primaryColor: z.string().regex(/^#[0-9a-fA-F]{6}$/),
+  logoUrl: z.string().trim().max(2000).optional().default(""),
 });
 
 export async function PUT(request: Request) {
