@@ -83,8 +83,8 @@ export async function POST() {
         account_onboarding: {
           configurations: ["recipient"],
           collection_options: {
-            fields: "eventually_due",
-            future_requirements: "include",
+            fields: "currently_due",
+            future_requirements: "omit",
           },
           refresh_url: `${origin}/dashboard/settings?connect=refresh`,
           return_url: `${origin}/dashboard/settings?connect=complete`,
