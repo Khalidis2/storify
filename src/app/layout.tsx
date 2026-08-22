@@ -14,7 +14,15 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Storify — Build your shop's website in minutes",
+  metadataBase: new URL(
+    process.env.APP_URL ??
+      process.env.AUTH_URL ??
+      "https://storify-six.vercel.app"
+  ),
+  title: {
+    default: "Storify — Build your shop's website in minutes",
+    template: "%s | Storify",
+  },
   description:
     "Storify lets small shops build a fully customizable website, list products, and publish a live storefront.",
 };
