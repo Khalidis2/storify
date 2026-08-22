@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
 import {
+  MAX_STRIPE_AMOUNT_CENTS,
+  MIN_STRIPE_AMOUNT_CENTS,
+} from "@/lib/payment-limits";
+import {
   checkRateLimit,
   getClientIdentifier,
   rateLimitResponse,
@@ -123,6 +127,16 @@ export async function POST(request: Request) {
     (total, item) => total + item.priceCents * item.quantity,
     0
   );
+  if (
+    totalCents < MIN_STRIPE_AMOUNT_CENTS ||
+    totalCents > MAX_STRIPE_AMOUNT_CENTS
+  ) {
+    return NextResponse.json(
+      { error: "Your cart total is outside the supported payment range." },
+      { status: 400 }
+    );
+  }
+
   const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
   let order;
