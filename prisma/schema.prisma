@@ -28,7 +28,7 @@ model Plan {
 
 model Shop {
   id           String    @id @default(cuid())
-  ownerId      String
+  ownerId      String    @unique
   owner        User      @relation(fields: [ownerId], references: [id])
   name         String
   slug         String    @unique
