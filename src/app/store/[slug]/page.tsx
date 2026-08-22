@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { cache } from "react";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { BlockRenderer } from "@/components/block-renderer";
@@ -5,6 +7,51 @@ import { defaultLayout, type Block } from "@/lib/blocks";
 import { CartProvider } from "@/components/storefront/cart-context";
 import { CartDrawer } from "@/components/storefront/cart-drawer";
 import { OrderSuccessBanner } from "@/components/storefront/order-success-banner";
+
+const getPublishedShop = cache((slug: string) =>
+  prisma.shop.findFirst({ where: { slug, published: true } })
+);
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const shop = await getPublishedShop(slug);
+
+  if (!shop) {
+    return {
+      title: "Shop not found",
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const description =
+    shop.tagline?.trim().slice(0, 160) || `Shop ${shop.name} online.`;
+  const images = shop.logoUrl
+    ? [{ url: shop.logoUrl, alt: `${shop.name} logo` }]
+    : undefined;
+
+  return {
+    title: shop.name,
+    description,
+    alternates: { canonical: `/store/${shop.slug}` },
+    openGraph: {
+      type: "website",
+      title: shop.name,
+      description,
+      url: `/store/${shop.slug}`,
+      images,
+    },
+    twitter: {
+      card: images ? "summary_large_image" : "summary",
+      title: shop.name,
+      description,
+      images: shop.logoUrl ? [shop.logoUrl] : undefined,
+    },
+  };
+}
 
 export default async function StorefrontPage({
   params,
@@ -16,8 +63,8 @@ export default async function StorefrontPage({
   const { slug } = await params;
   const { order } = await searchParams;
 
-  const shop = await prisma.shop.findUnique({ where: { slug } });
-  if (!shop || !shop.published) {
+  const shop = await getPublishedShop(slug);
+  if (!shop) {
     notFound();
   }
 
