@@ -29,6 +29,12 @@ export async function POST(request: Request) {
   if (!plan) {
     return NextResponse.json({ error: "That plan doesn't exist." }, { status: 400 });
   }
+  if (plan.priceCents > 0) {
+    return NextResponse.json(
+      { error: "Paid plans are not available until subscription billing is enabled." },
+      { status: 403 }
+    );
+  }
 
   const updated = await prisma.shop.update({
     where: { id: shop.id },

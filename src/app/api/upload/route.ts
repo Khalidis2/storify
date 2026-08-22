@@ -2,8 +2,30 @@ import { NextResponse } from "next/server";
 import { put } from "@vercel/blob";
 import { auth } from "@/auth";
 
-const MAX_SIZE_BYTES = 4 * 1024 * 1024; // 4MB
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+const MAX_SIZE_BYTES = 4 * 1024 * 1024;
+const EXTENSIONS: Record<string, string> = {
+  "image/jpeg": "jpg",
+  "image/png": "png",
+  "image/webp": "webp",
+};
+
+function hasValidSignature(type: string, bytes: Uint8Array) {
+  if (type === "image/jpeg") {
+    return bytes.length >= 3 && bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff;
+  }
+  if (type === "image/png") {
+    const signature = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+    return signature.every((value, index) => bytes[index] === value);
+  }
+  if (type === "image/webp") {
+    return (
+      bytes.length >= 12 &&
+      String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+      String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+    );
+  }
+  return false;
+}
 
 export async function POST(request: Request) {
   const session = await auth();
@@ -13,48 +35,49 @@ export async function POST(request: Request) {
 
   const form = await request.formData().catch(() => null);
   const file = form?.get("file");
-
   if (!file || !(file instanceof File)) {
     return NextResponse.json({ error: "No file provided." }, { status: 400 });
   }
 
-  if (!ALLOWED_TYPES.includes(file.type)) {
+  const extension = EXTENSIONS[file.type];
+  if (!extension) {
     return NextResponse.json(
-      { error: "Please upload a JPG, PNG, WEBP, GIF, or SVG image." },
+      { error: "Please upload a JPG, PNG, or WEBP image." },
+      { status: 400 }
+    );
+  }
+  if (file.size === 0 || file.size > MAX_SIZE_BYTES) {
+    return NextResponse.json(
+      { error: "Image must be between 1 byte and 4MB." },
       { status: 400 }
     );
   }
 
-  if (file.size > MAX_SIZE_BYTES) {
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!hasValidSignature(file.type, bytes)) {
     return NextResponse.json(
-      { error: "Image is too large. Please keep it under 4MB." },
+      { error: "The file content does not match a supported image format." },
       { status: 400 }
     );
   }
 
-  const ext = file.name.includes(".") ? file.name.split(".").pop() : "bin";
-  const pathname = `uploads/${session.user.id}/${crypto.randomUUID()}.${ext}`;
+  const pathname = `uploads/${session.user.id}/${crypto.randomUUID()}.${extension}`;
 
   try {
     const blob = await put(pathname, file, {
       access: "public",
       addRandomSuffix: false,
+      contentType: file.type,
     });
     return NextResponse.json({ url: blob.url });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.error("Blob upload failed:", message);
-
+  } catch (error) {
+    console.error("Blob upload failed", error);
     if (!process.env.BLOB_READ_WRITE_TOKEN) {
       return NextResponse.json(
-        {
-          error:
-            "Image uploads aren't configured yet — no Blob store is connected to this deployment.",
-        },
-        { status: 500 }
+        { error: "Image uploads aren't configured for this deployment." },
+        { status: 503 }
       );
     }
-
     return NextResponse.json(
       { error: "Upload failed. Please try again." },
       { status: 500 }
