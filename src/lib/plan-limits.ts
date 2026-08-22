@@ -1,0 +1,1 @@
+export const STARTER_PRODUCT_LIMIT = 10;

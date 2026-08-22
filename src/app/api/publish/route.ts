@@ -3,6 +3,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
+import { STARTER_PRODUCT_LIMIT } from "@/lib/plan-limits";
 
 const publishSchema = z.object({
   planId: z.string().min(1),
@@ -33,6 +34,18 @@ export async function POST(request: Request) {
     return NextResponse.json(
       { error: "Paid plans are not available until subscription billing is enabled." },
       { status: 403 }
+    );
+  }
+
+  const productCount = await prisma.product.count({
+    where: { shopId: shop.id },
+  });
+  if (productCount > STARTER_PRODUCT_LIMIT) {
+    return NextResponse.json(
+      {
+        error: `The Starter plan supports up to ${STARTER_PRODUCT_LIMIT} products. Remove extra products before publishing.`,
+      },
+      { status: 409 }
     );
   }
 
