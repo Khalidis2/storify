@@ -94,6 +94,13 @@ export default async function OrdersPage() {
                 </span>
               </div>
 
+              <div className="mt-2 text-sm text-zinc-600">
+                <p>{order.fulfillmentMode === "PICKUP" ? "Pickup" : "Delivery"}</p>
+                {order.shippingFeeCents > 0 && (
+                  <p>Delivery fee: {formatPrice(order.shippingFeeCents, order.currency)}</p>
+                )}
+              </div>
+
               {order.customerEmail && (
                 <p className="mt-2 text-sm text-zinc-600">{order.customerEmail}</p>
               )}
