@@ -78,15 +78,19 @@ model Order {
   id              String      @id @default(cuid())
   shopId          String
   shop            Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  stripeSessionId String      @unique
+  stripeSessionId String?     @unique
   customerEmail   String?
   shippingName    String?
   shippingAddress String?
   status          String      @default("pending")
   totalCents      Int
+  reservedAt      DateTime?
+  expiresAt       DateTime?
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
   items           OrderItem[]
+
+  @@index([status, expiresAt])
 }
 
 model OrderItem {

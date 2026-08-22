@@ -4,6 +4,10 @@ import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
 
+const RESERVATION_MINUTES = 30;
+
+class StockReservationError extends Error {}
+
 const checkoutSchema = z.object({
   shopSlug: z.string().min(1),
   items: z
@@ -16,6 +20,29 @@ const checkoutSchema = z.object({
     .min(1)
     .max(50),
 });
+
+async function releaseReservation(orderId: string) {
+  await prisma.$transaction(async (tx) => {
+    const order = await tx.order.findUnique({
+      where: { id: orderId },
+      include: { items: true },
+    });
+    if (!order || order.status !== "reserved") return;
+
+    for (const item of order.items) {
+      if (!item.productId) continue;
+      await tx.product.updateMany({
+        where: { id: item.productId, shopId: order.shopId },
+        data: { stock: { increment: item.quantity } },
+      });
+    }
+
+    await tx.order.update({
+      where: { id: order.id },
+      data: { status: "canceled" },
+    });
+  });
+}
 
 export async function POST(request: Request) {
   const stripe = getStripe();
@@ -36,7 +63,6 @@ export async function POST(request: Request) {
   for (const item of parsed.data.items) {
     quantities.set(item.productId, (quantities.get(item.productId) ?? 0) + item.quantity);
   }
-
   if ([...quantities.values()].some((quantity) => quantity > 99)) {
     return NextResponse.json({ error: "Your cart looks invalid." }, { status: 400 });
   }
@@ -46,46 +72,76 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "This shop isn't available." }, { status: 404 });
   }
 
-  const productIds = [...quantities.keys()];
   const products = await prisma.product.findMany({
-    where: { id: { in: productIds }, shopId: shop.id },
+    where: { id: { in: [...quantities.keys()] }, shopId: shop.id },
   });
-
-  if (products.length !== productIds.length) {
+  if (products.length !== quantities.size) {
     return NextResponse.json(
       { error: "One of the items in your cart is no longer available." },
       { status: 400 }
     );
   }
 
-  const lineItems = [];
-  const orderItemsData = [];
-  let totalCents = 0;
+  const lineItems = products.map((product) => ({
+    quantity: quantities.get(product.id)!,
+    price_data: {
+      currency: "usd",
+      unit_amount: product.priceCents,
+      product_data: { name: product.title },
+    },
+  }));
+  const orderItemsData = products.map((product) => ({
+    productId: product.id,
+    title: product.title,
+    priceCents: product.priceCents,
+    quantity: quantities.get(product.id)!,
+  }));
+  const totalCents = orderItemsData.reduce(
+    (total, item) => total + item.priceCents * item.quantity,
+    0
+  );
+  const expiresAt = new Date(Date.now() + RESERVATION_MINUTES * 60 * 1000);
 
-  for (const product of products) {
-    const quantity = quantities.get(product.id)!;
-    if (quantity > product.stock) {
+  let order;
+  try {
+    order = await prisma.$transaction(async (tx) => {
+      for (const item of orderItemsData) {
+        const result = await tx.product.updateMany({
+          where: {
+            id: item.productId,
+            shopId: shop.id,
+            stock: { gte: item.quantity },
+          },
+          data: { stock: { decrement: item.quantity } },
+        });
+        if (result.count !== 1) {
+          throw new StockReservationError();
+        }
+      }
+
+      return tx.order.create({
+        data: {
+          shopId: shop.id,
+          status: "reserved",
+          totalCents,
+          reservedAt: new Date(),
+          expiresAt,
+          items: { create: orderItemsData },
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof StockReservationError) {
       return NextResponse.json(
-        { error: `Only ${product.stock} of "${product.title}" left in stock.` },
+        { error: "One of the items just sold out. Please review your cart." },
         { status: 409 }
       );
     }
-
-    totalCents += product.priceCents * quantity;
-    lineItems.push({
-      quantity,
-      price_data: {
-        currency: "usd",
-        unit_amount: product.priceCents,
-        product_data: { name: product.title },
-      },
-    });
-    orderItemsData.push({
-      productId: product.id,
-      title: product.title,
-      priceCents: product.priceCents,
-      quantity,
-    });
+    console.error("Inventory reservation failed", error);
+    return NextResponse.json(
+      { error: "Checkout is temporarily unavailable. Please try again." },
+      { status: 502 }
+    );
   }
 
   const configuredOrigin = process.env.APP_URL ?? process.env.AUTH_URL;
@@ -93,35 +149,44 @@ export async function POST(request: Request) {
     ? new URL(configuredOrigin).origin
     : new URL(request.url).origin;
 
+  let session;
   try {
-    const session = await stripe.checkout.sessions.create({
+    session = await stripe.checkout.sessions.create({
       mode: "payment",
       payment_method_types: ["card"],
       line_items: lineItems,
       shipping_address_collection: {
         allowed_countries: [...STRIPE_SHIPPING_COUNTRIES],
       },
+      expires_at: Math.floor(expiresAt.getTime() / 1000),
+      client_reference_id: order.id,
       success_url: `${origin}/store/${shop.slug}?order=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
-      metadata: { shopId: shop.id },
+      metadata: { shopId: shop.id, orderId: order.id },
     });
-
-    await prisma.order.create({
-      data: {
-        shopId: shop.id,
-        stripeSessionId: session.id,
-        status: "pending",
-        totalCents,
-        items: { create: orderItemsData },
-      },
-    });
-
-    return NextResponse.json({ url: session.url });
   } catch (error) {
-    console.error("Checkout creation failed", error);
+    await releaseReservation(order.id).catch((releaseError) => {
+      console.error("Reservation release failed", { orderId: order.id, releaseError });
+    });
+    console.error("Stripe Checkout Session creation failed", error);
     return NextResponse.json(
       { error: "Checkout is temporarily unavailable. Please try again." },
       { status: 502 }
     );
   }
+
+  await prisma.order
+    .update({
+      where: { id: order.id },
+      data: { stripeSessionId: session.id },
+    })
+    .catch((error) => {
+      console.error("Could not attach Stripe session to reserved order", {
+        orderId: order.id,
+        sessionId: session.id,
+        error,
+      });
+    });
+
+  return NextResponse.json({ url: session.url });
 }

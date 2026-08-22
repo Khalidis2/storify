@@ -12,7 +12,18 @@ function formatPrice(cents: number) {
 
 const STATUS_STYLES: Record<string, string> = {
   paid: "bg-green-50 text-green-700",
+  reserved: "bg-blue-50 text-blue-700",
   pending: "bg-amber-50 text-amber-700",
+  expired: "bg-zinc-100 text-zinc-600",
+  canceled: "bg-red-50 text-red-700",
+};
+
+const STATUS_LABELS: Record<string, string> = {
+  paid: "Paid",
+  reserved: "Awaiting payment",
+  pending: "Pending",
+  expired: "Expired",
+  canceled: "Canceled",
 };
 
 interface ShippingAddress {
@@ -78,7 +89,7 @@ export default async function OrdersPage() {
                       STATUS_STYLES[order.status] ?? "bg-zinc-100 text-zinc-600"
                     }`}
                   >
-                    {order.status === "paid" ? "Paid" : "Pending"}
+                    {STATUS_LABELS[order.status] ?? order.status}
                   </span>
                   <span className="text-sm text-zinc-500">
                     {order.createdAt.toLocaleString()}
