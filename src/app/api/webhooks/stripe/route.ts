@@ -6,6 +6,13 @@ import { getStripe } from "@/lib/stripe";
 
 class InsufficientStockError extends Error {}
 
+function isDuplicateEvent(error: unknown) {
+  return (
+    error instanceof Prisma.PrismaClientKnownRequestError &&
+    error.code === "P2002"
+  );
+}
+
 export async function POST(request: Request) {
   const stripe = getStripe();
   const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
@@ -29,13 +36,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid signature." }, { status: 400 });
   }
 
-  if (event.type !== "checkout.session.completed") {
+  if (
+    event.type !== "checkout.session.completed" &&
+    event.type !== "checkout.session.expired"
+  ) {
     return NextResponse.json({ received: true });
   }
 
   const session = event.data.object as Stripe.Checkout.Session;
-  if (session.payment_status !== "paid") {
-    return NextResponse.json({ received: true });
+  const orderId = session.metadata?.orderId ?? session.client_reference_id;
+  if (!orderId) {
+    console.error("Stripe session is missing an order reference", {
+      eventId: event.id,
+      sessionId: session.id,
+    });
+    return NextResponse.json({ error: "Order reference missing." }, { status: 500 });
   }
 
   try {
@@ -45,31 +60,52 @@ export async function POST(request: Request) {
       });
 
       const order = await tx.order.findUnique({
-        where: { stripeSessionId: session.id },
+        where: { id: orderId },
         include: { items: true },
       });
-
-      if (!order) {
+      if (!order || order.shopId !== session.metadata?.shopId) {
         throw new Error(`Order not found for Stripe session ${session.id}`);
       }
+      if (order.stripeSessionId && order.stripeSessionId !== session.id) {
+        throw new Error(`Stripe session mismatch for order ${order.id}`);
+      }
 
-      if (order.status === "paid") return;
+      if (event.type === "checkout.session.expired") {
+        if (order.status !== "reserved") return;
 
-      for (const item of order.items) {
-        if (!item.productId) continue;
-        const result = await tx.product.updateMany({
-          where: {
-            id: item.productId,
-            shopId: order.shopId,
-            stock: { gte: item.quantity },
-          },
-          data: { stock: { decrement: item.quantity } },
+        for (const item of order.items) {
+          if (!item.productId) continue;
+          await tx.product.updateMany({
+            where: { id: item.productId, shopId: order.shopId },
+            data: { stock: { increment: item.quantity } },
+          });
+        }
+
+        await tx.order.update({
+          where: { id: order.id },
+          data: { status: "expired", stripeSessionId: session.id },
         });
+        return;
+      }
 
-        if (result.count !== 1) {
-          throw new InsufficientStockError(
-            `Insufficient stock for product ${item.productId}`
-          );
+      if (session.payment_status !== "paid" || order.status === "paid") return;
+
+      if (order.status !== "reserved") {
+        for (const item of order.items) {
+          if (!item.productId) continue;
+          const result = await tx.product.updateMany({
+            where: {
+              id: item.productId,
+              shopId: order.shopId,
+              stock: { gte: item.quantity },
+            },
+            data: { stock: { decrement: item.quantity } },
+          });
+          if (result.count !== 1) {
+            throw new InsufficientStockError(
+              `Insufficient stock for product ${item.productId}`
+            );
+          }
         }
       }
 
@@ -78,6 +114,7 @@ export async function POST(request: Request) {
         where: { id: order.id },
         data: {
           status: "paid",
+          stripeSessionId: session.id,
           customerEmail: session.customer_details?.email ?? null,
           shippingName: shippingDetails?.name ?? null,
           shippingAddress: shippingDetails
@@ -87,10 +124,7 @@ export async function POST(request: Request) {
       });
     });
   } catch (error) {
-    if (
-      error instanceof Prisma.PrismaClientKnownRequestError &&
-      error.code === "P2002"
-    ) {
+    if (isDuplicateEvent(error)) {
       return NextResponse.json({ received: true });
     }
 
