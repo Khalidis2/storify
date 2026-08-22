@@ -108,6 +108,13 @@ export async function POST(request: Request) {
     );
   }
   const shopCurrency = shop.currency;
+  if (!shop.stripeAccountId || !shop.stripeChargesEnabled) {
+    return NextResponse.json(
+      { error: "This shop is not ready to accept payments." },
+      { status: 503 }
+    );
+  }
+  const stripeAccountId = shop.stripeAccountId;
   if (!isFulfillmentMode(shop.fulfillmentMode)) {
     return NextResponse.json(
       { error: "This shop has unsupported fulfilment settings." },
@@ -181,6 +188,7 @@ export async function POST(request: Request) {
       return tx.order.create({
         data: {
           shopId: shop.id,
+          stripeAccountId,
           status: "reserved",
           currency: shopCurrency,
           fulfillmentMode,
@@ -236,11 +244,14 @@ export async function POST(request: Request) {
               },
             ]
           : undefined,
+      payment_intent_data: {
+        transfer_data: { destination: stripeAccountId },
+      },
       expires_at: Math.floor(expiresAt.getTime() / 1000),
       client_reference_id: order.id,
       success_url: `${origin}/store/${shop.slug}?order=success&session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
-      metadata: { shopId: shop.id, orderId: order.id },
+      metadata: { shopId: shop.id, orderId: order.id, stripeAccountId },
     });
   } catch (error) {
     await releaseReservation(order.id).catch((releaseError) => {
