@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import type Stripe from "stripe";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
@@ -117,7 +118,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const lineItems = products.map((product) => ({
+  const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = products.map((product) => ({
     quantity: quantities.get(product.id)!,
     price_data: {
       currency: stripeCurrency(shopCurrency),
