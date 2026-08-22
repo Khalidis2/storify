@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
+import { STRIPE_CURRENCY } from "@/lib/currency";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
 import {
   MAX_STRIPE_AMOUNT_CENTS,
@@ -112,7 +113,7 @@ export async function POST(request: Request) {
   const lineItems = products.map((product) => ({
     quantity: quantities.get(product.id)!,
     price_data: {
-      currency: "aed",
+      currency: STRIPE_CURRENCY,
       unit_amount: product.priceCents,
       product_data: { name: product.title },
     },

@@ -3,13 +3,7 @@
 import { useState } from "react";
 import { useCart } from "@/components/storefront/cart-context";
 
-function formatPrice(cents: number) {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "AED",
-  });
-}
-
+import { formatPrice } from "@/lib/currency";
 export function CartDrawer({ shopSlug }: { shopSlug: string }) {
   const { products, items, totalCount, totalCents, setQuantity, removeItem } = useCart();
   const [open, setOpen] = useState(false);

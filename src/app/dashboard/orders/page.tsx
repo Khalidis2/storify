@@ -2,13 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 import { getShopForUser } from "@/lib/shop";
-
-function formatPrice(cents: number) {
-  return (cents / 100).toLocaleString(undefined, {
-    style: "currency",
-    currency: "USD",
-  });
-}
+import { formatPrice } from "@/lib/currency";
 
 const STATUS_STYLES: Record<string, string> = {
   paid: "bg-green-50 text-green-700",

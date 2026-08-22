@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ImageUploadField } from "@/components/image-upload-field";
+import { SHOP_CURRENCY } from "@/lib/currency";
 
 export interface ProductInput {
   title: string;
@@ -85,7 +86,7 @@ export function ProductForm({
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-zinc-700">
-            Price (AED)
+            Price ({SHOP_CURRENCY})
           </label>
           <input
             required
