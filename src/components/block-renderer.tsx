@@ -55,12 +55,14 @@ export function BlockRenderer({
   editable = false,
   onTextChange,
   shopSlug,
+  currency,
 }: {
   block: Block;
   products: RenderProduct[];
   editable?: boolean;
   onTextChange?: (key: string, value: string) => void;
   shopSlug?: string;
+  currency: string;
 }) {
   const p = block.props;
   const commit = (key: string) => (value: string) => onTextChange?.(key, value);
@@ -282,7 +284,7 @@ export function BlockRenderer({
                     <div className="p-4 pb-0">
                       <p className="font-medium text-zinc-900">{product.title}</p>
                       <p className="mt-1 text-sm text-zinc-600">
-                        {formatPrice(product.priceCents)}
+                        {formatPrice(product.priceCents, currency)}
                       </p>
                     </div>
                   </>

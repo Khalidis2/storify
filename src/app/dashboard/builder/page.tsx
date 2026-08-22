@@ -41,6 +41,7 @@ export default async function BuilderPage() {
         imageFocalY: p.imageFocalY,
       }))}
       storeUrl={`/store/${shop.slug}`}
+      currency={shop.currency}
     />
   );
 }

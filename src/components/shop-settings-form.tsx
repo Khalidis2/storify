@@ -2,17 +2,25 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { SUPPORTED_SHOP_CURRENCIES } from "@/lib/currency";
 
 export function ShopSettingsForm({
   initial,
 }: {
-  initial: { name: string; tagline: string; primaryColor: string; logoUrl: string };
+  initial: {
+    name: string;
+    tagline: string;
+    primaryColor: string;
+    logoUrl: string;
+    currency: string;
+  };
 }) {
   const router = useRouter();
   const [name, setName] = useState(initial.name);
   const [tagline, setTagline] = useState(initial.tagline);
   const [primaryColor, setPrimaryColor] = useState(initial.primaryColor);
   const [logoUrl, setLogoUrl] = useState(initial.logoUrl);
+  const [currency, setCurrency] = useState(initial.currency);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -26,7 +34,7 @@ export function ShopSettingsForm({
     const res = await fetch("/api/shop", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, tagline, primaryColor, logoUrl }),
+      body: JSON.stringify({ name, tagline, primaryColor, logoUrl, currency }),
     });
 
     setLoading(false);
@@ -108,6 +116,26 @@ export function ShopSettingsForm({
           placeholder="https://…"
           className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
         />
+      </div>
+
+      <div>
+        <label className="block text-sm font-medium text-zinc-700">
+          Store currency
+        </label>
+        <select
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
+          className="mt-1 w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm focus:border-zinc-500 focus:outline-none"
+        >
+          {SUPPORTED_SHOP_CURRENCIES.map((code) => (
+            <option key={code} value={code}>
+              {code}
+            </option>
+          ))}
+        </select>
+        <p className="mt-1 text-xs text-zinc-500">
+          Changing currency does not convert existing product prices.
+        </p>
       </div>
 
       <button

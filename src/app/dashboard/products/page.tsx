@@ -17,5 +17,5 @@ export default async function ProductsPage() {
     orderBy: { createdAt: "desc" },
   });
 
-  return <ProductsManager initialProducts={products} />;
+  return <ProductsManager initialProducts={products} currency={shop.currency} />;
 }

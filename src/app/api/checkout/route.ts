@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
-import { STRIPE_CURRENCY } from "@/lib/currency";
+import { isShopCurrency, stripeCurrency } from "@/lib/currency";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
 import {
+  getMinimumStripeAmount,
   MAX_STRIPE_AMOUNT_CENTS,
-  MIN_STRIPE_AMOUNT_CENTS,
 } from "@/lib/payment-limits";
 import {
   checkRateLimit,
@@ -99,6 +99,12 @@ export async function POST(request: Request) {
   if (!shop || !shop.published) {
     return NextResponse.json({ error: "This shop isn't available." }, { status: 404 });
   }
+  if (!isShopCurrency(shop.currency)) {
+    return NextResponse.json(
+      { error: "This shop has an unsupported currency." },
+      { status: 503 }
+    );
+  }
 
   const products = await prisma.product.findMany({
     where: { id: { in: [...quantities.keys()] }, shopId: shop.id },
@@ -113,7 +119,7 @@ export async function POST(request: Request) {
   const lineItems = products.map((product) => ({
     quantity: quantities.get(product.id)!,
     price_data: {
-      currency: STRIPE_CURRENCY,
+      currency: stripeCurrency(shop.currency),
       unit_amount: product.priceCents,
       product_data: { name: product.title },
     },
@@ -129,7 +135,7 @@ export async function POST(request: Request) {
     0
   );
   if (
-    totalCents < MIN_STRIPE_AMOUNT_CENTS ||
+    totalCents < getMinimumStripeAmount(shop.currency) ||
     totalCents > MAX_STRIPE_AMOUNT_CENTS
   ) {
     return NextResponse.json(
@@ -161,6 +167,7 @@ export async function POST(request: Request) {
         data: {
           shopId: shop.id,
           status: "reserved",
+          currency: shop.currency,
           totalCents,
           reservedAt: new Date(),
           expiresAt,

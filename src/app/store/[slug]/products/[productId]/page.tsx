@@ -96,7 +96,7 @@ export default async function ProductDetailPage({
   }));
 
   return (
-    <CartProvider shopSlug={shop.slug} products={renderProducts}>
+    <CartProvider shopSlug={shop.slug} products={renderProducts} currency={shop.currency}>
       <div className="flex-1 bg-white">
         <div className="mx-auto max-w-5xl px-6 pt-8">
           <Link
@@ -106,7 +106,7 @@ export default async function ProductDetailPage({
             ← Back to shop
           </Link>
         </div>
-        <ProductDetail product={product} />
+        <ProductDetail product={product} currency={shop.currency} />
       </div>
       <CartDrawer shopSlug={shop.slug} />
     </CartProvider>
