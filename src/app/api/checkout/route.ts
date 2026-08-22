@@ -105,6 +105,7 @@ export async function POST(request: Request) {
       { status: 503 }
     );
   }
+  const shopCurrency = shop.currency;
 
   const products = await prisma.product.findMany({
     where: { id: { in: [...quantities.keys()] }, shopId: shop.id },
@@ -119,7 +120,7 @@ export async function POST(request: Request) {
   const lineItems = products.map((product) => ({
     quantity: quantities.get(product.id)!,
     price_data: {
-      currency: stripeCurrency(shop.currency),
+      currency: stripeCurrency(shopCurrency),
       unit_amount: product.priceCents,
       product_data: { name: product.title },
     },
@@ -135,7 +136,7 @@ export async function POST(request: Request) {
     0
   );
   if (
-    totalCents < getMinimumStripeAmount(shop.currency) ||
+    totalCents < getMinimumStripeAmount(shopCurrency) ||
     totalCents > MAX_STRIPE_AMOUNT_CENTS
   ) {
     return NextResponse.json(
@@ -167,7 +168,7 @@ export async function POST(request: Request) {
         data: {
           shopId: shop.id,
           status: "reserved",
-          currency: shop.currency,
+          currency: shopCurrency,
           totalCents,
           reservedAt: new Date(),
           expiresAt,
