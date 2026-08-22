@@ -3,6 +3,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getStripe } from "@/lib/stripe";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
+import {
+  checkRateLimit,
+  getClientIdentifier,
+  rateLimitResponse,
+} from "@/lib/rate-limit";
 
 const RESERVATION_MINUTES = 30;
 
@@ -57,6 +62,24 @@ export async function POST(request: Request) {
   const parsed = checkoutSchema.safeParse(body);
   if (!parsed.success) {
     return NextResponse.json({ error: "Your cart looks invalid." }, { status: 400 });
+  }
+
+  try {
+    const rateLimit = await checkRateLimit(request, {
+      namespace: "checkout",
+      identifier: `${getClientIdentifier(request)}:${parsed.data.shopSlug}`,
+      limit: 10,
+      windowMs: 60 * 1000,
+    });
+    if (!rateLimit.allowed) {
+      return rateLimitResponse(rateLimit.retryAfterSeconds);
+    }
+  } catch (error) {
+    console.error("Checkout rate limit check failed", error);
+    return NextResponse.json(
+      { error: "Checkout is temporarily unavailable. Please try again." },
+      { status: 503 }
+    );
   }
 
   const quantities = new Map<string, number>();
