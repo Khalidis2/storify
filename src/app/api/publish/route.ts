@@ -20,6 +20,13 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "No shop found." }, { status: 404 });
   }
 
+  if (!shop.stripeAccountId || !shop.stripeChargesEnabled) {
+    return NextResponse.json(
+      { error: "Connect a payment-ready Stripe account before publishing." },
+      { status: 409 }
+    );
+  }
+
   const body = await request.json().catch(() => null);
   const parsed = publishSchema.safeParse(body);
   if (!parsed.success) {

@@ -69,6 +69,12 @@ export async function POST(request: Request) {
       if (order.stripeSessionId && order.stripeSessionId !== session.id) {
         throw new Error(`Stripe session mismatch for order ${order.id}`);
       }
+      if (
+        !order.stripeAccountId ||
+        order.stripeAccountId !== session.metadata?.stripeAccountId
+      ) {
+        throw new Error(`Stripe destination mismatch for order ${order.id}`);
+      }
 
       if (event.type === "checkout.session.expired") {
         if (order.status !== "reserved") return;

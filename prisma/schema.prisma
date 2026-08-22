@@ -40,6 +40,9 @@ model Shop {
   shippingFeeCents  Int       @default(0)
   shippingPolicy    String?
   returnPolicy      String?
+  stripeAccountId       String?   @unique
+  stripeChargesEnabled  Boolean   @default(false)
+  stripePayoutsEnabled  Boolean   @default(false)
   published    Boolean   @default(false)
   publishedAt  DateTime?
   planId       String?
@@ -84,6 +87,7 @@ model Order {
   shopId          String
   shop            Shop        @relation(fields: [shopId], references: [id], onDelete: Cascade)
   stripeSessionId String?     @unique
+  stripeAccountId String?
   customerEmail   String?
   shippingName    String?
   shippingAddress String?

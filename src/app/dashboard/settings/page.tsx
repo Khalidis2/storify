@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { getShopForUser } from "@/lib/shop";
 import { ShopSettingsForm } from "@/components/shop-settings-form";
+import { StripeConnectSettings } from "@/components/stripe-connect-settings";
 
 export default async function SettingsPage() {
   const session = await auth();
@@ -14,6 +15,9 @@ export default async function SettingsPage() {
   return (
     <div>
       <h1 className="mb-6 text-2xl font-semibold text-zinc-900">Shop settings</h1>
+      <div className="mb-6">
+        <StripeConnectSettings />
+      </div>
       <ShopSettingsForm
         initial={{
           name: shop.name,
