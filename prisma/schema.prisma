@@ -98,3 +98,9 @@ model OrderItem {
   priceCents Int
   quantity   Int
 }
+
+model StripeEvent {
+  id        String   @id
+  type      String
+  createdAt DateTime @default(now())
+}
