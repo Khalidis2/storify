@@ -8,11 +8,15 @@ on:
 
 permissions:
   contents: read
+  pull-requests: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      DATABASE_URL: postgresql://storify:storify@127.0.0.1:5432/storify
+      AUTH_SECRET: ci-only-secret
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -20,4 +24,25 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npx prisma generate
       - run: npm test
+      - name: Build
+        id: build
+        continue-on-error: true
+        run: npm run build > build.log 2>&1
+      - name: Report build failure
+        if: steps.build.outcome == 'failure' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          {
+            echo 'Build diagnostic:'
+            echo
+            echo '\`\`\`text'
+            tail -n 120 build.log
+            echo '\`\`\`'
+          } > diagnostic.md
+          gh pr comment "${{ github.event.pull_request.number }}" --body-file diagnostic.md
+      - name: Enforce build result
+        if: steps.build.outcome == 'failure'
+        run: exit 1
