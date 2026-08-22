@@ -65,7 +65,7 @@ export function StripeConnectSettings() {
                 {status?.connected ? "Continue Stripe setup" : "Connect Stripe"}
               </button>
             )}
-            {status?.connected && (
+            {ready && (
               <button
                 type="button"
                 disabled={action}
