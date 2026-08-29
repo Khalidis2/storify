@@ -59,11 +59,12 @@ crashing). `AUTH_SECRET` you should still set: `npx auth secret`, or
      signing secret for `STRIPE_WEBHOOK_SECRET`.
    - Generate `CRON_SECRET` with `openssl rand -base64 32`. Configure a scheduler to send it as a bearer token in a GET request to
      `/api/cron/reconcile-reservations`.
-3. `vercel.json` sets the build command to
-   `prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build`,
-   so schema migrations and plan seeding happen automatically on every
-   deploy — just redeploy after adding/changing env vars for a fresh build
-   to pick them up (existing deployments don't retroactively see new env vars).
+3. `vercel.json` builds with `prisma generate && npm test && next build`.
+   Database migrations and seeding are intentionally separate from application
+   builds so a temporary database outage cannot block deployment. Before the
+   first production deployment, and whenever migrations change, run
+   `npx prisma migrate deploy` followed by `npm run db:seed` from a controlled
+   release environment that can reach the production database.
 
 ## How it fits together
 
