@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "prisma generate && npm test && next build"
+  "buildCommand": "prisma generate && npm test && next build",
+  "crons": [
+    {
+      "path": "/api/cron/reconcile-reservations",
+      "schedule": "0 0 * * *"
+    }
+  ]
 }
