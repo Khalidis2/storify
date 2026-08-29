@@ -1,4 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "prisma generate && npm test && prisma migrate deploy && tsx prisma/seed.ts && next build"
+  "buildCommand": "prisma generate && npm test && prisma migrate deploy && tsx prisma/seed.ts && next build",
+  "crons": [
+    {
+      "path": "/api/cron/reconcile-reservations",
+      "schedule": "*/5 * * * *"
+    }
+  ]
 }

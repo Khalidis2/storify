@@ -33,6 +33,7 @@ AUTH_SECRET="…"
 BLOB_READ_WRITE_TOKEN="…"       # from a Vercel Blob store (public access)
 STRIPE_SECRET_KEY="sk_test_…"
 STRIPE_WEBHOOK_SECRET="whsec_…"
+CRON_SECRET="…"                    # random secret used by Vercel Cron
 ```
 
 All four of the above are optional for local dev — the app degrades
@@ -46,15 +47,18 @@ crashing). `AUTH_SECRET` you should still set: `npx auth secret`, or
 1. Import the GitHub repo into Vercel (Next.js is auto-detected).
 2. In Project → Settings → Environment Variables, add for **Production**:
    `DATABASE_URL`, `AUTH_SECRET`, and once you're ready for uploads/payments,
-   `BLOB_READ_WRITE_TOKEN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`.
+   `BLOB_READ_WRITE_TOKEN`, `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`,
+   and `CRON_SECRET`.
    - `BLOB_READ_WRITE_TOKEN` comes from connecting a **public-access** Blob
      store (Storage tab → Create Database → Blob). Must be public — product
      photos are shown to anonymous storefront visitors.
    - Stripe keys come from your Stripe dashboard (test mode is fine to
      start). Create a webhook endpoint pointing at
      `https://<your-domain>/api/webhooks/stripe` listening for
-     `checkout.session.completed`, and use its signing secret for
-     `STRIPE_WEBHOOK_SECRET`.
+     `checkout.session.completed` and `checkout.session.expired`, and use its
+     signing secret for `STRIPE_WEBHOOK_SECRET`.
+   - Generate `CRON_SECRET` with `openssl rand -base64 32`. Vercel sends it
+     as a bearer token to the reservation-reconciliation endpoint.
 3. `vercel.json` sets the build command to
    `prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build`,
    so schema migrations and plan seeding happen automatically on every
