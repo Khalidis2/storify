@@ -26,7 +26,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           if ! output="$(npx tsc --noEmit 2>&1)"; then
-            description="${output//      - run: npm test
+            description="$(printf '%s' "$output" | tr '\\n' ' ' | cut -c1-140)"
+            gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \\
+              -f state=failure \\
+              -f context="TypeScript diagnostic" \\
+              -f description="$description"
+            printf '%s\\n' "$output"
+            exit 1
+          fi
+      - run: npm test
 \\n'/ }"
             gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \\
               -f state=failure \\
