@@ -22,9 +22,22 @@ jobs:
           cache: npm
       - run: npm ci
       - name: Typecheck
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if ! output="$(npx tsc --noEmit 2>&1)"; then
-            printf '\`\`\`text\\n%s\\n\`\`\`\\n' "$output" >> "$GITHUB_STEP_SUMMARY"
+            index=0
+            while IFS= read -r line; do
+              case "$line" in
+                *"error TS"*)
+                  index=$((index + 1))
+                  gh api --method POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" \\
+                    -f state=failure \\
+                    -f context="TypeScript $index" \\
+                    -f description="${line:0:140}"
+                  ;;
+              esac
+            done <<< "$output"
             printf '%s\\n' "$output"
             exit 1
           fi
