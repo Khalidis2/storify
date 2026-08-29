@@ -51,6 +51,8 @@ model Shop {
   updatedAt    DateTime  @updatedAt
   pages        Page[]
   products     Product[]
+  productVariants ProductVariant[]
+  collections  Collection[]
   orders       Order[]
 }
 
@@ -80,6 +82,72 @@ model Product {
   stock       Int      @default(0)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  variants    ProductVariant[]
+  collections ProductCollection[]
+
+  @@index([shopId, createdAt])
+}
+
+model ProductVariant {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title       String
+  sku         String?
+  priceCents  Int
+  stock       Int      @default(0)
+  isDefault   Boolean  @default(false)
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  movements   InventoryMovement[]
+
+  @@unique([shopId, sku])
+  @@index([productId, position])
+  @@index([shopId, createdAt])
+}
+
+model Collection {
+  id          String   @id @default(cuid())
+  shopId      String
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  title       String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  products    ProductCollection[]
+
+  @@unique([shopId, slug])
+  @@index([shopId, createdAt])
+}
+
+model ProductCollection {
+  productId    String
+  product      Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  collectionId String
+  collection   Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  position     Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@id([productId, collectionId])
+  @@index([collectionId, position])
+}
+
+model InventoryMovement {
+  id            String         @id @default(cuid())
+  variantId     String
+  variant       ProductVariant @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  quantityDelta Int
+  reason        String
+  referenceType String?
+  referenceId   String?
+  createdAt     DateTime       @default(now())
+
+  @@index([variantId, createdAt])
+  @@index([referenceType, referenceId])
 }
 
 model Order {
