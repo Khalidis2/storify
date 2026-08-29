@@ -10,6 +10,8 @@ export function normalizeSku(value: string) {
     .toUpperCase()
     .replace(/\s+/g, "-")
     .replace(/[^A-Z0-9._-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^[._-]+|[._-]+$/g, "")
     .slice(0, 64);
 }
 
