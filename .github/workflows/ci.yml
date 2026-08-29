@@ -20,5 +20,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
-      - run: npx tsc --noEmit
+      - name: Typecheck
+        run: |
+          if ! output="$(npx tsc --noEmit 2>&1)"; then
+            printf '\`\`\`text\\n%s\\n\`\`\`\\n' "$output" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\\n' "$output"
+            exit 1
+          fi
       - run: npm test
