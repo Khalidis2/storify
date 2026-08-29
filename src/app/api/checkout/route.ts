@@ -6,6 +6,7 @@ import { getStripe } from "@/lib/stripe";
 import { isShopCurrency, stripeCurrency } from "@/lib/currency";
 import { effectiveShippingFee, isFulfillmentMode } from "@/lib/fulfillment";
 import { STRIPE_SHIPPING_COUNTRIES } from "@/lib/countries";
+import { checkoutIdempotencyKey } from "@/lib/checkout-idempotency";
 import {
   getMinimumStripeAmount,
   MAX_STRIPE_AMOUNT_CENTS,
@@ -221,38 +222,41 @@ export async function POST(request: Request) {
 
   let session;
   try {
-    session = await stripe.checkout.sessions.create({
-      mode: "payment",
-      payment_method_types: ["card"],
-      line_items: lineItems,
-      shipping_address_collection:
-        fulfillmentMode === "DELIVERY"
-          ? { allowed_countries: [...STRIPE_SHIPPING_COUNTRIES] }
-          : undefined,
-      shipping_options:
-        fulfillmentMode === "DELIVERY" && shippingFeeCents > 0
-          ? [
-              {
-                shipping_rate_data: {
-                  type: "fixed_amount",
-                  fixed_amount: {
-                    amount: shippingFeeCents,
-                    currency: stripeCurrency(shopCurrency),
+    session = await stripe.checkout.sessions.create(
+      {
+        mode: "payment",
+        payment_method_types: ["card"],
+        line_items: lineItems,
+        shipping_address_collection:
+          fulfillmentMode === "DELIVERY"
+            ? { allowed_countries: [...STRIPE_SHIPPING_COUNTRIES] }
+            : undefined,
+        shipping_options:
+          fulfillmentMode === "DELIVERY" && shippingFeeCents > 0
+            ? [
+                {
+                  shipping_rate_data: {
+                    type: "fixed_amount",
+                    fixed_amount: {
+                      amount: shippingFeeCents,
+                      currency: stripeCurrency(shopCurrency),
+                    },
+                    display_name: "Delivery",
                   },
-                  display_name: "Delivery",
                 },
-              },
-            ]
-          : undefined,
-      payment_intent_data: {
-        transfer_data: { destination: stripeAccountId },
+              ]
+            : undefined,
+        payment_intent_data: {
+          transfer_data: { destination: stripeAccountId },
+        },
+        expires_at: Math.floor(expiresAt.getTime() / 1000),
+        client_reference_id: order.id,
+        success_url: `${origin}/store/${shop.slug}?order=success&session_id={CHECKOUT_SESSION_ID}`,
+        cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
+        metadata: { shopId: shop.id, orderId: order.id, stripeAccountId },
       },
-      expires_at: Math.floor(expiresAt.getTime() / 1000),
-      client_reference_id: order.id,
-      success_url: `${origin}/store/${shop.slug}?order=success&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/store/${shop.slug}?order=canceled`,
-      metadata: { shopId: shop.id, orderId: order.id, stripeAccountId },
-    });
+      { idempotencyKey: checkoutIdempotencyKey(order.id) }
+    );
   } catch (error) {
     await releaseReservation(order.id).catch((releaseError) => {
       console.error("Reservation release failed", { orderId: order.id, releaseError });
@@ -264,18 +268,45 @@ export async function POST(request: Request) {
     );
   }
 
-  await prisma.order
-    .update({
+  try {
+    await prisma.order.update({
       where: { id: order.id },
       data: { stripeSessionId: session.id },
-    })
-    .catch((error) => {
-      console.error("Could not attach Stripe session to reserved order", {
+    });
+  } catch (error) {
+    console.error("Could not attach Stripe session to reserved order", {
+      orderId: order.id,
+      sessionId: session.id,
+      error,
+    });
+
+    let expired = false;
+    try {
+      await stripe.checkout.sessions.expire(session.id);
+      expired = true;
+    } catch (expireError) {
+      console.error("Could not expire unattached Stripe session", {
         orderId: order.id,
         sessionId: session.id,
-        error,
+        expireError,
       });
-    });
+    }
+
+    if (expired) {
+      await releaseReservation(order.id).catch((releaseError) => {
+        console.error("Could not release inventory after expiring session", {
+          orderId: order.id,
+          sessionId: session.id,
+          releaseError,
+        });
+      });
+    }
+
+    return NextResponse.json(
+      { error: "Checkout could not be finalized. Please try again." },
+      { status: 502 }
+    );
+  }
 
   return NextResponse.json({ url: session.url });
 }
