@@ -57,8 +57,8 @@ crashing). `AUTH_SECRET` you should still set: `npx auth secret`, or
      `https://<your-domain>/api/webhooks/stripe` listening for
      `checkout.session.completed` and `checkout.session.expired`, and use its
      signing secret for `STRIPE_WEBHOOK_SECRET`.
-   - Generate `CRON_SECRET` with `openssl rand -base64 32`. Vercel sends it
-     as a bearer token to the reservation-reconciliation endpoint.
+   - Generate `CRON_SECRET` with `openssl rand -base64 32`. Configure a scheduler to send it as a bearer token in a GET request to
+     `/api/cron/reconcile-reservations`.
 3. `vercel.json` sets the build command to
    `prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build`,
    so schema migrations and plan seeding happen automatically on every
